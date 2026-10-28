@@ -2,11 +2,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import pkg from './package.json';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __UXIGL_VERSION__: JSON.stringify(pkg.version),
+  },
   build: {
     outDir: 'dist/lib',
     lib: {

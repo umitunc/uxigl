@@ -89,37 +89,37 @@ export const UXILandingPage: React.FC<UXILandingPageProps> = ({
   const installCommands = {
     npm: {
       label: 'npm',
-      cmd: 'npm install uxigl',
+      cmd: 'npm install truncgil-uxigl',
       hint: isTR
         ? 'Tek komutla uxiGL + SheetGL + FileManGL kurulumu'
         : 'Single-command install: uxiGL + SheetGL + FileManGL',
     },
     npx: {
       label: 'npx init',
-      cmd: 'npx uxigl init',
+      cmd: 'npx truncgil-uxigl init',
       hint: isTR
         ? 'Hazır <UXIWorkspace /> bileşenini ve tema sağlayıcısını oluşturur'
         : 'Scaffolds ready-to-use <UXIWorkspace /> & theme provider',
     },
     pnpm: {
       label: 'pnpm',
-      cmd: 'pnpm add uxigl',
+      cmd: 'pnpm add truncgil-uxigl',
       hint: 'PNPM Workspace',
     },
     yarn: {
       label: 'yarn',
-      cmd: 'yarn add uxigl',
+      cmd: 'yarn add truncgil-uxigl',
       hint: 'Yarn Package Manager',
     },
     bun: {
       label: 'bun',
-      cmd: 'bun add uxigl',
+      cmd: 'bun add truncgil-uxigl',
       hint: 'Bun Runtime',
     },
   } as const;
 
-  const uxiUsageSnippet = `import { ThemeProvider, ToastProvider, Button, Card, SheetGLGridAdapter, FileManGLExplorerAdapter } from 'uxigl';
-import 'uxigl/styles';
+  const uxiUsageSnippet = `import { ThemeProvider, ToastProvider, Button, Card, SheetGLGridAdapter, FileManGLExplorerAdapter } from 'truncgil-uxigl';
+import 'truncgil-uxigl/styles';
 
 export default function App() {
   return (
@@ -366,7 +366,7 @@ export default function App() {
                   opacity: 0.92,
                 }}
               >
-                v2.5.1
+                v{__UXIGL_VERSION__}
               </span>
             </div>
           </a>
@@ -1432,9 +1432,9 @@ export default function App() {
                       data={[
                         {
                           id: '1',
-                          pkg: 'uxigl',
+                          pkg: 'truncgil-uxigl',
                           arch: 'Liquid Glass × Material 3 UI',
-                          tag: 'v2.5.0',
+                          tag: `v${__UXIGL_VERSION__}`,
                         },
                         {
                           id: '2',
@@ -1658,7 +1658,7 @@ export default function App() {
               color: isDark ? '#38BDF8' : '#0284C7',
             }}
           >
-            v2.5.0
+            v{__UXIGL_VERSION__}
           </span>
         </div>
 
@@ -1754,8 +1754,8 @@ export default function App() {
           }}
         >
           {[
-            { id: 'ft-uxigl', cmd: 'npm i uxigl' },
-            { id: 'ft-npx-uxi', cmd: 'npx uxigl init' },
+            { id: 'ft-uxigl', cmd: 'npm i truncgil-uxigl' },
+            { id: 'ft-npx-uxi', cmd: 'npx truncgil-uxigl init' },
             { id: 'ft-sheetgl', cmd: 'npm i sheetgl' },
             { id: 'ft-filemangl', cmd: 'npm i filemangl' },
           ].map((item) => (

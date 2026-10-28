@@ -2,7 +2,7 @@
 
 > **Uniting User Experience (UX), User Interface (UI), and Hardware-Accelerated WebGL (`SheetGL` + `FileManGL`) into a Single Enterprise Architecture.**
 
-[![Version](https://img.shields.io/badge/version-2.6.0-0284c7.svg)](https://github.com/umitunc/uxigl)
+[![Version](https://img.shields.io/badge/version-2.7.0-0284c7.svg)](https://github.com/umitunc/uxigl)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](https://www.typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-10b981.svg)](https://opensource.org/licenses/MIT)
 
@@ -64,15 +64,15 @@ The [`UXILogo`](src/components/brand/UXILogo.tsx) emblem reduces the three lette
 
 ```bash
 # SheetGL (WebGL DataGrid), FileManGL (WebGL2 VFS) and Lucide Icons are bundled directly!
-npm install uxigl
-# or: pnpm add uxigl | yarn add uxigl | bun add uxigl
+npm install truncgil-uxigl
+# or: pnpm add truncgil-uxigl | yarn add truncgil-uxigl | bun add truncgil-uxigl
 ```
 
 ### 2. Scaffold Ready-to-Use Workspace via NPX
 
 ```bash
 # Generates a pre-configured <UXIWorkspace /> component & theme setup
-npx uxigl init
+npx truncgil-uxigl init
 ```
 
 ### 3. Usage Example
@@ -86,8 +86,8 @@ import {
   Card,
   SheetGLGridAdapter,
   FileManGLExplorerAdapter,
-} from 'uxigl';
-import 'uxigl/styles';
+} from 'truncgil-uxigl';
+import 'truncgil-uxigl/styles';
 
 export default function App() {
   return (

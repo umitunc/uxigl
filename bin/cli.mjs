@@ -19,9 +19,9 @@ const RESET = '\x1b[0m';
 function readPkgVersion() {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8'));
-    return pkg.version || '2.5.1';
+    return pkg.version || '2.7.0';
   } catch {
-    return '2.5.1';
+    return '2.7.0';
   }
 }
 
@@ -38,8 +38,8 @@ ${CYAN}${BOLD}  ╔════════════════════�
 function printHelp() {
   printBanner();
   console.log(`${BOLD}Usage:${RESET}
-  npx uxigl <command> [options]
-  npmx uxigl <command> [options]
+  npx truncgil-uxigl <command> [options]
+  npmx truncgil-uxigl <command> [options]
 
 ${BOLD}Commands:${RESET}
   ${GREEN}init${RESET} [target-file]      Generate a ready-to-use <UXIWorkspace /> component in your React project
@@ -51,17 +51,17 @@ ${BOLD}Commands:${RESET}
 
 ${BOLD}Single-Command Installation:${RESET}
   ${DIM}# npm / pnpm / yarn / bun (SheetGL & FileManGL included):${RESET}
-  npm install uxigl
-  pnpm add uxigl
-  yarn add uxigl
-  bun add uxigl
+  npm install truncgil-uxigl
+  pnpm add truncgil-uxigl
+  yarn add truncgil-uxigl
+  bun add truncgil-uxigl
 
 ${BOLD}CLI Examples:${RESET}
   ${DIM}# 1. Generate ready-to-use UXIWorkspace.tsx component:${RESET}
-  npx uxigl init
+  npx truncgil-uxigl init
 
   ${DIM}# 2. Scaffold a brand-new starter project:${RESET}
-  npx uxigl create my-uxigl-app
+  npx truncgil-uxigl create my-uxigl-app
 `);
 }
 
@@ -77,8 +77,8 @@ import {
   SheetGLGridAdapter,
   FileManGLExplorerAdapter,
   UXILogo,
-} from 'uxigl';
-import 'uxigl/styles';
+} from 'truncgil-uxigl';
+import 'truncgil-uxigl/styles';
 
 export function UXIWorkspace() {
   const [activeTab, setActiveTab] = useState<'overview' | 'sheet' | 'files'>('overview');
@@ -156,7 +156,7 @@ export function UXIWorkspace() {
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
                   <Badge variant="success">Hazır</Badge>
-                  <Badge variant="info">v2.5.1</Badge>
+                  <Badge variant="info">v${readPkgVersion()}</Badge>
                   <Badge variant="default">WebGL Hızlandırmalı</Badge>
                 </div>
               </Card>
@@ -225,8 +225,8 @@ function handleInit(rawArgs) {
   console.log(`${GREEN}✔ Created uxiGL starter component at:${RESET} ${BOLD}${outPath}${RESET}`);
   console.log(`
 ${BOLD}Next steps:${RESET}
-  1. Ensure ${CYAN}uxigl${RESET} is installed in your project:
-     ${YELLOW}npm install uxigl${RESET}
+  1. Ensure ${CYAN}truncgil-uxigl${RESET} is installed in your project:
+     ${YELLOW}npm install truncgil-uxigl${RESET}
   2. Import and render ${CYAN}<${componentName} />${RESET} in your ${BOLD}App.tsx${RESET}:
      ${DIM}import { ${componentName} } from './components/${componentName}';${RESET}
 `);
@@ -235,7 +235,7 @@ ${BOLD}Next steps:${RESET}
 function handleCreate(projectName) {
   printBanner();
   if (!projectName) {
-    console.error(`${YELLOW}⚠ Please specify a project directory name:${RESET}\n  npx uxigl create my-uxigl-app`);
+    console.error(`${YELLOW}⚠ Please specify a project directory name:${RESET}\n  npx truncgil-uxigl create my-uxigl-app`);
     process.exit(1);
   }
 
@@ -258,7 +258,7 @@ function handleCreate(projectName) {
       preview: 'vite preview',
     },
     dependencies: {
-      uxigl: `^${readPkgVersion()}`,
+      'truncgil-uxigl': `^${readPkgVersion()}`,
       react: '^19.0.0',
       'react-dom': '^19.0.0',
     },

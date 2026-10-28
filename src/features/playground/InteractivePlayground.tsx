@@ -2443,14 +2443,14 @@ export function CloudFileManagerExample() {
                   {
                     id: '1',
                     module: '@uxigl/core-tokens',
-                    version: 'v2.5.0',
+                    version: `v${__UXIGL_VERSION__}`,
                     bundleSize: '4.2 kB',
                     status: 'Stable',
                   },
                   {
                     id: '2',
                     module: '@uxigl/native-table',
-                    version: 'v2.5.0',
+                    version: `v${__UXIGL_VERSION__}`,
                     bundleSize: '3.1 kB',
                     status: 'Stable',
                   },

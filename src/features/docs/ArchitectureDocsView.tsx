@@ -56,19 +56,19 @@ export interface ArchitectureDocsViewProps {
 }
 
 const INSTALL_SNIPPET = `# 1. Tek Komutla uxiGL Kurulumu (SheetGL, FileManGL ve Simgeler Dahildir)
-npm install uxigl
-# veya: pnpm add uxigl | yarn add uxigl | bun add uxigl
+npm install truncgil-uxigl
+# veya: pnpm add truncgil-uxigl | yarn add truncgil-uxigl | bun add truncgil-uxigl
 
 # 2. NPX CLI ile Hazır Çalışma Alanı Bileşenini Otomatik Oluşturun
-npx uxigl init
+npx truncgil-uxigl init
 
 # 3. Geliştirme Sunucusunu Başlatın
 npm run dev`;
 
 const PROVIDER_SETUP_SNIPPET = `import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider, ToastProvider } from 'uxigl';
-import 'uxigl/styles';
+import { ThemeProvider, ToastProvider } from 'truncgil-uxigl';
+import 'truncgil-uxigl/styles';
 import { App } from './App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -82,7 +82,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );`;
 
 const QUICK_START_COMPONENT_SNIPPET = `import { useState } from 'react';
-import { Card, Input, Switch, Button, Badge, useToast } from 'uxigl';
+import { Card, Input, Switch, Button, Badge, useToast } from 'truncgil-uxigl';
 import { Mail, Sparkles } from 'lucide-react';
 
 export function QuickWorkspaceCard() {
@@ -130,7 +130,7 @@ export function QuickWorkspaceCard() {
   );
 }`;
 
-const THEME_HOOK_SNIPPET = `import { useTheme, Button } from 'uxigl';
+const THEME_HOOK_SNIPPET = `import { useTheme, Button } from 'truncgil-uxigl';
 
 export function ThemeSwitcherButton() {
   const {
@@ -156,7 +156,7 @@ export function ThemeSwitcherButton() {
   );
 }`;
 
-const LAYOUT_SHELL_SNIPPET = `import { Sidebar, TopHeader, type SidebarNavGroup } from 'uxigl';
+const LAYOUT_SHELL_SNIPPET = `import { Sidebar, TopHeader, type SidebarNavGroup } from 'truncgil-uxigl';
 import { LayoutDashboard } from 'lucide-react';
 
 const SIDEBAR_GROUPS: SidebarNavGroup[] = [
@@ -191,7 +191,7 @@ export function EnterpriseLayout({ children }: { children: React.ReactNode }) {
   );
 }`;
 
-const TOAST_CMD_SNIPPET = `import { useToast, useKeyboardShortcut } from 'uxigl';
+const TOAST_CMD_SNIPPET = `import { useToast, useKeyboardShortcut } from 'truncgil-uxigl';
 
 export function NotificationAndShortcutDemo() {
   const { notify } = useToast();
@@ -312,7 +312,7 @@ export const ArchitectureDocsView: React.FC<ArchitectureDocsViewProps> = ({
         headerIcon={<Rocket size={20} />}
         headerAction={
           <Badge tone="primary" variant="tonal" pulse size="sm">
-            v2.5
+            v{__UXIGL_VERSION__}
           </Badge>
         }
       >

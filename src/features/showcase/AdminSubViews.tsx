@@ -165,7 +165,7 @@ const MESSAGES_DATA = [
 const CALENDAR_EVENTS = [
   {
     day: 4,
-    title: 'uxiGL v2.5.0 Tasarım Sistemi Yayını',
+    title: `uxiGL v${__UXIGL_VERSION__} Tasarım Sistemi Yayını`,
     tag: 'Release',
     tone: 'primary' as const,
     time: '10:00',

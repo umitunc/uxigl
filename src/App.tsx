@@ -367,7 +367,7 @@ export const App: React.FC = () => {
             label: 'GitHub Deposu',
             href: 'https://github.com/umitunc/uxigl',
             icon: <GithubIcon size={16} />,
-            badge: 'v2.5.1',
+            badge: `v${__UXIGL_VERSION__}`,
             badgeTone: 'primary',
           },
         ],
@@ -661,7 +661,7 @@ export const App: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                  <strong style={{ color: 'var(--uxu-text-primary)' }}>uxiGL v2.5.1</strong>
+                  <strong style={{ color: 'var(--uxu-text-primary)' }}>uxiGL v{__UXIGL_VERSION__}</strong>
                   <span>•</span>
                   <code
                     style={{
@@ -674,7 +674,7 @@ export const App: React.FC = () => {
                       color: 'var(--uxu-primary)',
                     }}
                   >
-                    $ npm i uxigl
+                    $ npm i truncgil-uxigl
                   </code>
                   <code
                     style={{
@@ -687,7 +687,7 @@ export const App: React.FC = () => {
                       color: 'var(--uxu-text-primary)',
                     }}
                   >
-                    $ npx uxigl init
+                    $ npx truncgil-uxigl init
                   </code>
                 </div>
 
