@@ -223,6 +223,8 @@ export function buildInheritedSheetGLTheme(
     fontFeatureSettings: '"tnum"',
     canvas: {
       bg: canvasBg,
+      zebraRowBg: blendHexColors(canvasBg, modeTokens.surfaceTonal, isDark ? 0.40 : 0.28),
+      rowHoverBg: hexToRgba(modeTokens.primary, isDark ? 0.08 : 0.04),
       gridLine: gridLineColor,
       headerBg,
       headerText: modeTokens.textPrimary,
