@@ -7,13 +7,12 @@ import {
   PanelLeftOpen,
   Search,
   Sliders,
-  HardDrive,
   X,
 } from 'lucide-react';
 import type { SidebarProps } from '../../../core/contracts/NavigationContract';
 import { RouteService } from '../../../core/services/RouteService';
 import { UXILogo } from '../../brand/UXILogo';
-import { Avatar, Badge, Progress } from '../../primitives';
+import { Avatar, Badge } from '../../primitives';
 
 /**
  * ============================================================================
@@ -301,9 +300,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                             {item.badge !== undefined && (
                               <span
-                                className={`uxu-sidebar__badge uxu-sidebar__badge--${
-                                  item.badgeTone ?? 'primary'
-                                }`}
+                                className={`uxu-sidebar__badge uxu-sidebar__badge--${item.badgeTone ?? 'primary'
+                                  }`}
                               >
                                 {item.badge}
                               </span>
@@ -374,9 +372,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   </span>
                                   {sub.badge !== undefined && (
                                     <span
-                                      className={`uxu-sidebar__subbadge uxu-sidebar__badge--${
-                                        sub.badgeTone ?? 'neutral'
-                                      }`}
+                                      className={`uxu-sidebar__subbadge uxu-sidebar__badge--${sub.badgeTone ?? 'neutral'
+                                        }`}
                                     >
                                       {sub.badge}
                                     </span>
@@ -395,23 +392,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </nav>
 
-        {/* Bottom Pinned Quota Widget & User Profile Bar */}
+        {/* Bottom User Profile Bar */}
         <div className="uxu-sidebar__footer">
-          {!collapsed && (
-            <div className="uxu-sidebar__quota-card">
-              <div className="uxu-sidebar__quota-top">
-                <span className="uxu-sidebar__quota-title">
-                  <HardDrive size={12} /> Bulut Kotası
-                </span>
-                <span className="uxu-sidebar__quota-pct">78%</span>
-              </div>
-              <Progress value={78} size="sm" tone="primary" showValue={false} />
-              <div className="uxu-sidebar__quota-sub">
-                1.56 / 2.0 TB Kullanımda
-              </div>
-            </div>
-          )}
-
           <div className="uxu-sidebar__user-row">
             <Avatar
               name="Ümit Uz"

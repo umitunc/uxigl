@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { Search, CornerDownLeft, Sparkles } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Search, CornerDownLeft, Sparkles, X } from 'lucide-react';
 import { useKeyboardShortcut } from '../../../hooks/useKeyboardShortcut';
 
 /**
@@ -34,8 +34,28 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useKeyboardShortcut('Escape', onClose, { enabled: open });
+  const handleClose = () => {
+    setQuery('');
+    setSelectedIndex(0);
+    onClose();
+  };
+
+  useKeyboardShortcut('Escape', handleClose, { enabled: open });
+
+  // Whenever the palette opens, clear query, reset index, and auto-focus
+  useEffect(() => {
+    if (open) {
+      setQuery('');
+      setSelectedIndex(0);
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   const filteredActions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -50,7 +70,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query, open]);
+  }, [query]);
 
   if (!open) return null;
 
@@ -70,14 +90,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     } else if (e.key === 'Enter' && filteredActions[selectedIndex]) {
       e.preventDefault();
       filteredActions[selectedIndex].onSelect();
-      onClose();
+      handleClose();
     }
   };
 
   return (
     <div
       className="uxu-modal-backdrop uxu-cmd-backdrop"
-      onClick={onClose}
+      onClick={handleClose}
       role="presentation"
     >
       <div
@@ -91,14 +111,44 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         <div className="uxu-cmd-palette__search">
           <Search size={19} className="uxu-cmd-palette__search-icon" />
           <input
+            ref={inputRef}
             type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={(e) => e.target.select()}
             placeholder={placeholder}
             className="uxu-cmd-palette__input"
           />
-          <kbd className="uxu-cmd-palette__esc" onClick={onClose}>
+          {query.trim().length > 0 && (
+            <button
+              type="button"
+              className="uxu-cmd-palette__clear"
+              onClick={() => {
+                setQuery('');
+                setSelectedIndex(0);
+                inputRef.current?.focus();
+              }}
+              title="Aramayı Temizle"
+              aria-label="Aramayı Temizle"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--uxu-text-tertiary, #94a3b8)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                marginRight: '6px',
+                borderRadius: '50%',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <X size={15} />
+            </button>
+          )}
+          <kbd className="uxu-cmd-palette__esc" onClick={handleClose}>
             ESC
           </kbd>
         </div>
@@ -119,7 +169,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                   onMouseEnter={() => setSelectedIndex(idx)}
                   onClick={() => {
                     item.onSelect();
-                    onClose();
+                    handleClose();
                   }}
                   className={`uxu-cmd-palette__item ${
                     isSelected ? 'uxu-cmd-palette__item--selected' : ''
