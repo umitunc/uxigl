@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 import type { IdentifiableProps } from '../../../core/contracts/ComponentContracts';
+import { useKeyboardShortcut } from '../../../hooks/useKeyboardShortcut';
 
 /**
  * ============================================================================
@@ -10,23 +11,61 @@ import type { IdentifiableProps } from '../../../core/contracts/ComponentContrac
  * Glass / Material 3 surfaces, keyboard ESC dismissal, and footer actions.
  */
 
+/** Screen edge slide-over placement for {@link Drawer}. */
 export type DrawerPlacement = 'right' | 'left' | 'bottom';
+
+/** Width/height dimension scale for {@link Drawer}. */
 export type DrawerSize = 'sm' | 'md' | 'lg' | 'xl';
 
+/**
+ * Props contract for {@link Drawer}.
+ */
 export interface DrawerProps extends IdentifiableProps {
+  /** Controls whether the drawer panel is mounted and visible. */
   open: boolean;
+  /** Callback fired when the drawer is dismissed via overlay click, `Escape`, or close button. */
   onClose: () => void;
+  /** Primary drawer heading linked to the dialog via `aria-labelledby`. */
   title: React.ReactNode;
+  /** Optional secondary subtitle linked to the dialog via `aria-describedby`. */
   subtitle?: React.ReactNode;
+  /** Optional eyebrow badge rendered above the drawer title. */
   badge?: React.ReactNode;
+  /** Optional leading icon rendered in the drawer header. */
   icon?: React.ReactNode;
+  /** Edge of the viewport from which the drawer slides in (defaults to `'right'`). */
   placement?: DrawerPlacement;
+  /** Panel size scale (defaults to `'md'`). */
   size?: DrawerSize;
+  /** Surface material style (defaults to `'glass'`). */
   variant?: 'glass' | 'elevated' | 'tonal';
+  /** Optional sticky footer slot for action buttons. */
   footer?: React.ReactNode;
+  /** Main drawer body content. */
   children: React.ReactNode;
 }
 
+/**
+ * Enterprise slide-over `<Drawer />` (off-canvas panel) supporting `'right'`,
+ * `'left'`, and `'bottom'` placements, WAI-ARIA `dialog` semantics (`aria-labelledby`,
+ * `aria-describedby`), body scroll lock, and `Escape` key dismissal via `useKeyboardShortcut`.
+ *
+ * @param props - {@link DrawerProps} configuration options.
+ * @returns Rendered slide-over drawer overlay or `null` when closed.
+ *
+ * @example
+ * ```tsx
+ * <Drawer
+ *   open={isOpen}
+ *   onClose={() => setIsOpen(false)}
+ *   placement="right"
+ *   title="Node Telemetry Inspector"
+ *   subtitle="eu-central-1 · M4 Ultra Blade"
+ * >
+ *   <p>Detailed telemetry payload...</p>
+ * </Drawer>
+ * ```
+ */
 export const Drawer: React.FC<DrawerProps> = ({
   id,
   className = '',
@@ -43,14 +82,19 @@ export const Drawer: React.FC<DrawerProps> = ({
   footer,
   children,
 }) => {
+  const titleId = useId();
+  const subtitleId = useId();
+
+  useKeyboardShortcut('Escape', onClose, { enabled: open });
+
   useEffect(() => {
     if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -65,6 +109,8 @@ export const Drawer: React.FC<DrawerProps> = ({
         style={style}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={subtitle ? subtitleId : undefined}
         onClick={(e) => e.stopPropagation()}
         className={[
           'uxu-drawer-panel',
@@ -80,10 +126,16 @@ export const Drawer: React.FC<DrawerProps> = ({
           <div className="uxu-drawer-panel__header-left">
             {icon && <div className="uxu-modal__icon">{icon}</div>}
             <div className="uxu-drawer-panel__title-group">
-              {badge && <span className="uxu-drawer-panel__badge">{badge}</span>}
-              <h3 className="uxu-drawer-panel__title">{title}</h3>
+              {badge && (
+                <span className="uxu-drawer-panel__badge">{badge}</span>
+              )}
+              <h3 id={titleId} className="uxu-drawer-panel__title">
+                {title}
+              </h3>
               {subtitle && (
-                <p className="uxu-drawer-panel__subtitle">{subtitle}</p>
+                <p id={subtitleId} className="uxu-drawer-panel__subtitle">
+                  {subtitle}
+                </p>
               )}
             </div>
           </div>
