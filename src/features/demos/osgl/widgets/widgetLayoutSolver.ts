@@ -1,0 +1,15 @@
+export {
+  WIDGET_MAGNETIC_MARGIN,
+  WIDGET_MAGNETIC_SNAP_THRESHOLD,
+  snapWidgetToGrid,
+  clampWidgetSize,
+  clampWidgetPosition,
+  computeWidgetMagneticSnap,
+  computeWidgetResizeMagneticSnap,
+  resolveWidgetOverlaps,
+  type WidgetLayoutItem,
+  type WidgetNeighborRect,
+  type MagneticGuideLine,
+  type WidgetMagneticSnapResult,
+  type WidgetResizeMagneticSnapResult,
+} from '../../../osgl/widgetLayout';

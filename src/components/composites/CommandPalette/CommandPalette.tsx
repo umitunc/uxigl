@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, CornerDownLeft, Sparkles } from 'lucide-react';
 import { useKeyboardShortcut } from '../../../hooks/useKeyboardShortcut';
+import { matchesTrSearch } from '../../primitives/Select/selectHelpers';
 
 /**
  * ============================================================================
@@ -43,13 +44,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   useKeyboardShortcut('Escape', onClose, { enabled: open });
 
   const filteredActions = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     if (!q) return actions;
     return actions.filter(
       (item) =>
-        item.title.toLowerCase().includes(q) ||
-        (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
-        item.category.toLowerCase().includes(q)
+        matchesTrSearch(item.title, q) ||
+        matchesTrSearch(item.subtitle, q) ||
+        matchesTrSearch(item.category, q)
     );
   }, [actions, query]);
 

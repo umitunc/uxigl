@@ -151,7 +151,7 @@ class OSWasmEngine {
 
   public computeArrangeRects(
     count: number,
-    mode: 'cascade' | 'grid' | 'side-by-side',
+    mode: 'cascade' | 'grid' | 'side-by-side' | 'quadrants',
     usableW: number,
     usableH: number
   ): Array<{ x: number; y: number; width: number; height: number }> {
@@ -173,6 +173,19 @@ class OSWasmEngine {
           y: 54,
           width,
           height: this.clamp(usableH, 300, usableH),
+        });
+      } else if (mode === 'quadrants') {
+        const slot = idx % 4;
+        const col = slot % 2;
+        const row = Math.floor(slot / 2);
+        const cascadeOffset = Math.floor(idx / 4) * 20;
+        const cellW = this.clamp(Math.floor((usableW - 12) / 2), 300, usableW);
+        const cellH = this.clamp(Math.floor((usableH - 12) / 2), 230, usableH);
+        rects.push({
+          x: 24 + col * (cellW + 12) + cascadeOffset,
+          y: 54 + row * (cellH + 12) + cascadeOffset,
+          width: cellW,
+          height: cellH,
         });
       } else {
         const cols = count <= 2 ? count : Math.ceil(Math.sqrt(count));

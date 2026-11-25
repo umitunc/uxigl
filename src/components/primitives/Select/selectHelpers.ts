@@ -53,6 +53,21 @@ export const foldTrSearch = (input: string): string =>
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c');
 
+export function matchesTrSearch(candidate: string | undefined, rawQuery: string): boolean {
+  if (!candidate) return false;
+  const trimmed = rawQuery.trim();
+  if (!trimmed) return true;
+  const qEn = trimmed.toLowerCase();
+  const qTr = trimmed.toLocaleLowerCase('tr-TR');
+  const foldedCandidate = foldTrSearch(candidate);
+  const foldedTokens = foldTrSearch(trimmed).split(/\s+/).filter(Boolean);
+  return (
+    candidate.toLowerCase().includes(qEn) ||
+    candidate.toLocaleLowerCase('tr-TR').includes(qTr) ||
+    (foldedTokens.length > 0 && foldedTokens.every((tok) => foldedCandidate.includes(tok)))
+  );
+}
+
 export function useSelectPortalPosition(
   open: boolean,
   setOpen: React.Dispatch<React.SetStateAction<boolean>>,
@@ -67,10 +82,25 @@ export function useSelectPortalPosition(
     const el = triggerRef.current;
     if (!el || typeof window === 'undefined') return;
     const rect = el.getBoundingClientRect();
-    const viewportH = window.innerHeight;
-    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight || 800;
+    const viewportW = window.innerWidth || 1280;
 
-    if ((rect.width === 0 && rect.height === 0) || rect.bottom < 0 || rect.top > viewportH) {
+    // Keep popover open in headless / JSDOM environments where getBoundingClientRect() returns zero
+    if (rect.width === 0 && rect.height === 0) {
+      setOptionsMaxHeight(220);
+      setPopoverPos({
+        position: 'fixed',
+        left: 8,
+        top: 44,
+        width: 240,
+        maxHeight: 280,
+        zIndex: 10050,
+        margin: 0,
+      });
+      return;
+    }
+
+    if (rect.bottom < 0 || rect.top > viewportH) {
       setOpen(false);
       return;
     }

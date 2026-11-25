@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { UXILogo } from '../../../components/brand/UXILogo';
 import uxiNoBgPng from '../../../assets/logo/uxi_no_bg.png';
 import type { ThemeStudioPanelProps } from './ThemeStudioPanel';
-import type { DesktopWidgetId } from './types';
+import type { SnapZone } from '../../osgl/windowGeometry';
+import type { DesktopWidgetId, WindowArrangeMode } from './types';
 import { TopMenuDropdowns, type TopMenuKey } from './TopMenuDropdowns';
 import { TopMenuTray } from './TopMenuTray';
 
@@ -17,6 +18,8 @@ export function TopMenuBar({
   arrangeMenuOpen,
   setArrangeMenuOpen,
   arrangeWindows,
+  onSnapActiveWindow,
+  onFullscreenActive,
   closeAllWindows,
   dockVisible,
   onToggleDock,
@@ -24,6 +27,7 @@ export function TopMenuBar({
   onToggleWidgets,
   enabledWidgets,
   onToggleWidgetItem,
+  onCustomizeWidget,
   onResetWidgetPositions,
   onResetIcons,
   onOpenApp,
@@ -42,7 +46,9 @@ export function TopMenuBar({
   setPreviewDevice: React.Dispatch<React.SetStateAction<'auto' | 'desktop' | 'mobile'>>;
   arrangeMenuOpen: boolean;
   setArrangeMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  arrangeWindows: (mode: 'cascade' | 'grid' | 'side-by-side') => void;
+  arrangeWindows: (mode: WindowArrangeMode) => void;
+  onSnapActiveWindow?: (zone: Exclude<SnapZone, null>) => void;
+  onFullscreenActive?: () => void;
   closeAllWindows: () => void;
   dockVisible: boolean;
   onToggleDock: () => void;
@@ -50,6 +56,7 @@ export function TopMenuBar({
   onToggleWidgets?: () => void;
   enabledWidgets?: Record<DesktopWidgetId, boolean>;
   onToggleWidgetItem?: (id: DesktopWidgetId) => void;
+  onCustomizeWidget?: (id: DesktopWidgetId, anchorX: number, anchorY: number) => void;
   onResetWidgetPositions?: () => void;
   onResetIcons: () => void;
   onOpenApp: (id: string) => void;
@@ -228,7 +235,18 @@ export function TopMenuBar({
             onToggleWindowAnimation={() =>
               sharedStudioProps.setWindowAnimation(!sharedStudioProps.windowAnimation)
             }
+            windowControlsSide={sharedStudioProps.windowControlsSide}
+            onToggleWindowControlsSide={
+              sharedStudioProps.setWindowControlsSide
+                ? () =>
+                    sharedStudioProps.setWindowControlsSide?.(
+                      sharedStudioProps.windowControlsSide === 'right' ? 'left' : 'right'
+                    )
+                : undefined
+            }
             onToggleMode={() => sharedStudioProps.setMode(isDark ? 'light' : 'dark')}
+            onSnapActiveWindow={onSnapActiveWindow}
+            onFullscreenActive={onFullscreenActive}
             arrangeWindows={arrangeWindows}
             closeAllWindows={closeAllWindows}
             onResetIcons={onResetIcons}
@@ -257,7 +275,9 @@ export function TopMenuBar({
         onToggleWidgets={onToggleWidgets}
         enabledWidgets={enabledWidgets}
         onToggleWidgetItem={onToggleWidgetItem}
+        onCustomizeWidget={onCustomizeWidget}
         onResetWidgetPositions={onResetWidgetPositions}
+        isDark={isDark}
         trayIconBtnStyle={trayIconBtnStyle}
         dropdownStyle={dropdownStyle}
       />

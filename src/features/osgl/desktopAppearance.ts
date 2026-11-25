@@ -55,7 +55,7 @@ export function computeDesktopAppearance({
   glassIntensity: number;
   qualityMode: QualityMode;
 }) {
-  const wp = OS_WALLPAPERS[wallpaper] ?? OS_WALLPAPERS['dijios-oxford'];
+  const wp = OS_WALLPAPERS[wallpaper] ?? OS_WALLPAPERS['oxford-navy'];
   const activeImageSrc = uploadedBgDataUrl || customBgUrl.trim();
   const effectiveIsLightBg =
     bgMode === 'solid'

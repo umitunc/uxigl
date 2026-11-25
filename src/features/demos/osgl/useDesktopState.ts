@@ -7,6 +7,16 @@ import {
   type OSWallpaperId,
 } from '../OSGLEngine';
 import {
+  createDesktopFolderState,
+  dissolveDesktopFolderState,
+  moveAppsIntoFolderState,
+  recolorDesktopFolderState,
+  removeAppFromFolderState,
+  renameDesktopFolderState,
+  sanitizePersistedFolders,
+  setFolderAppsState,
+} from '../../osgl/desktopFoldersAndDock';
+import {
   DEFAULT_ENABLED_WIDGETS,
   DEFAULT_WIDGET_SIZES,
   DOCK_APP_IDS,
@@ -14,13 +24,16 @@ import {
   getDefaultWidgetPositions,
   loadOSGLState,
   type BgMode,
+  type DesktopFolder,
   type DesktopWidgetId,
   type EnterpriseOSApp,
   type IconBgStyle,
   type QualityMode,
   type WidgetPosition,
   type WidgetSize,
+  type WindowControlsSide,
 } from './types';
+import type { WidgetUserPrefs } from './widgets/widgetCustomization';
 import { FULLBLEED_APP_IDS, useWindowManager } from './useWindowManager';
 import { computeDesktopAppearance, useOSGLPersistence } from './useDesktopPersistence';
 
@@ -41,6 +54,7 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     setIconStyle,
     setIconFilled,
     setCustomRadiusPx,
+    setWorkspaceShell,
     resetPreferences,
   } = useTheme();
   const isDark = resolvedMode === 'dark';
@@ -115,6 +129,15 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
       return next;
     });
   };
+  const resetDockToDefault = () => {
+    setDockAppIds([...DOCK_APP_IDS]);
+    notify({
+      title: locale === 'tr' ? 'Dock Varsayılana Döndü' : 'Dock Reset to Default',
+      description: locale === 'tr' ? 'Varsayılan alt çubuk simgeleri yüklendi.' : 'Default Dock icons restored.',
+      tone: 'info',
+    });
+  };
+  const [dockCustomizerOpen, setDockCustomizerOpen] = useState(false);
   const [widgetsVisible, setWidgetsVisible] = useState<boolean>(savedState?.widgetsVisible ?? true);
   const [enabledWidgets, setEnabledWidgets] = useState<Record<DesktopWidgetId, boolean>>(() => ({
     ...DEFAULT_ENABLED_WIDGETS,
@@ -143,12 +166,33 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
   const updateWidgetSize = (id: DesktopWidgetId, size: WidgetSize) => {
     setWidgetSizes((prev) => ({ ...prev, [id]: size }));
   };
+  const [widgetUserPrefs, setWidgetUserPrefs] = useState<
+    Partial<Record<DesktopWidgetId, WidgetUserPrefs>>
+  >(() => savedState?.widgetUserPrefs ?? {});
+  const updateWidgetUserPrefs = (id: DesktopWidgetId, patch: Partial<WidgetUserPrefs>) => {
+    setWidgetUserPrefs((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? {}), ...patch },
+    }));
+  };
+  const resetSingleWidgetPrefs = (id: DesktopWidgetId) => {
+    setWidgetUserPrefs((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setWidgetSizes((prev) => ({ ...prev, [id]: DEFAULT_WIDGET_SIZES[id] }));
+  };
   const resetWidgetPositions = () => {
     setWidgetPositions(getDefaultWidgetPositions(viewportSize.w));
     setWidgetSizes(DEFAULT_WIDGET_SIZES);
+    setWidgetUserPrefs({});
   };
   const [windowAnimation, setWindowAnimation] = useState<boolean>(
     savedState?.windowAnimation ?? true
+  );
+  const [windowControlsSide, setWindowControlsSide] = useState<WindowControlsSide>(
+    savedState?.windowControlsSide ?? 'left'
   );
   const [iconBgStyle, setIconBgStyle] = useState<IconBgStyle>(
     savedState?.iconBgStyle ?? 'vivid'
@@ -174,6 +218,74 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     return initial;
   });
 
+  const allowedAppIds = useMemo(() => new Set(ENTERPRISE_APPS.map((a) => a.id)), []);
+  const [folders, setFolders] = useState<DesktopFolder[]>(() =>
+    sanitizePersistedFolders(savedState?.folders, allowedAppIds)
+  );
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const latestFolderRef = useRef({ folders, iconSlots });
+  latestFolderRef.current = { folders, iconSlots };
+
+  const createFolder = (opts?: { name?: string; initialAppIds?: string[]; targetSlot?: number }) => {
+    const res = createDesktopFolderState({
+      prevFolders: latestFolderRef.current.folders,
+      prevSlots: latestFolderRef.current.iconSlots,
+      name: opts?.name ?? (locale === 'tr' ? 'Yeni Klasör' : 'New Folder'),
+      initialAppIds: opts?.initialAppIds,
+      targetSlot: opts?.targetSlot,
+    });
+    latestFolderRef.current = { folders: res.folders, iconSlots: res.iconSlots };
+    setFolders(res.folders);
+    setIconSlots(res.iconSlots);
+    setRenamingFolderId(res.created.id);
+  };
+  const renameFolder = (folderId: string, nextName: string) => {
+    setFolders((prev) => renameDesktopFolderState(prev, folderId, nextName));
+    setRenamingFolderId(null);
+  };
+  const recolorFolder = (folderId: string, color: string) => {
+    setFolders((prev) => recolorDesktopFolderState(prev, folderId, color));
+  };
+  const moveAppsToFolder = (folderId: string, appIds: string[]) => {
+    const nextFolders = moveAppsIntoFolderState(latestFolderRef.current.folders, folderId, appIds);
+    const nextSlots = { ...latestFolderRef.current.iconSlots };
+    appIds.forEach((id) => delete nextSlots[id]);
+    latestFolderRef.current = { folders: nextFolders, iconSlots: nextSlots };
+    setFolders(nextFolders);
+    setIconSlots(nextSlots);
+  };
+  const setFolderApps = (folderId: string, nextAppIds: string[]) => {
+    const nextFolders = setFolderAppsState(latestFolderRef.current.folders, folderId, nextAppIds);
+    const nextSlots = { ...latestFolderRef.current.iconSlots };
+    nextAppIds.forEach((id) => delete nextSlots[id]);
+    latestFolderRef.current = { folders: nextFolders, iconSlots: nextSlots };
+    setFolders(nextFolders);
+    setIconSlots(nextSlots);
+  };
+  const removeAppFromFolder = (folderId: string, appId: string) => {
+    const res = removeAppFromFolderState({
+      prevFolders: latestFolderRef.current.folders,
+      prevSlots: latestFolderRef.current.iconSlots,
+      folderId,
+      appId,
+    });
+    latestFolderRef.current = { folders: res.folders, iconSlots: res.iconSlots };
+    setFolders(res.folders);
+    setIconSlots(res.iconSlots);
+  };
+  const dissolveFolder = (folderId: string) => {
+    const res = dissolveDesktopFolderState({
+      prevFolders: latestFolderRef.current.folders,
+      prevSlots: latestFolderRef.current.iconSlots,
+      folderId,
+    });
+    latestFolderRef.current = { folders: res.folders, iconSlots: res.iconSlots };
+    setFolders(res.folders);
+    setIconSlots(res.iconSlots);
+    if (openFolderId === folderId) setOpenFolderId(null);
+  };
+
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
   const [viewportSize, setViewportSize] = useState<{ w: number; h: number }>({
     w: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -198,6 +310,7 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     setMobileOpenAppId,
     windowAnimation,
     qualityMode,
+    dockVisible,
     notify,
   });
 
@@ -240,7 +353,9 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     enabledWidgets,
     widgetPositions,
     widgetSizes,
+    widgetUserPrefs,
     windowAnimation,
+    windowControlsSide,
     iconBgStyle,
     iconBgColor,
     iconGradColor1,
@@ -249,6 +364,7 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     iconSizePx,
     iconLabelScale,
     iconSlots,
+    folders,
     windows: windowMgr.windows,
     windowBoundsByApp: windowMgr.windowBoundsByApp,
     topZ: windowMgr.topZ,
@@ -300,6 +416,8 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     setDockVisible,
     windowAnimation,
     setWindowAnimation,
+    windowControlsSide,
+    setWindowControlsSide,
     iconBgStyle,
     setIconBgStyle,
     iconBgColor,
@@ -325,6 +443,10 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     setIconStyle,
     setIconFilled,
     setCustomRadiusPx,
+    setWorkspaceShell,
+    onCreateFolder: () => createFolder(),
+    onOpenDockCustomizer: () => setDockCustomizerOpen(true),
+    onResetDock: resetDockToDefault,
     resetPreferences,
   };
 
@@ -351,6 +473,21 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     dockAppIds,
     togglePinToDock,
     reorderDockApps,
+    resetDockToDefault,
+    dockCustomizerOpen,
+    setDockCustomizerOpen,
+    folders,
+    openFolderId,
+    setOpenFolderId,
+    renamingFolderId,
+    setRenamingFolderId,
+    createFolder,
+    renameFolder,
+    recolorFolder,
+    moveAppsToFolder,
+    setFolderApps,
+    removeAppFromFolder,
+    dissolveFolder,
     widgetsVisible,
     setWidgetsVisible,
     enabledWidgets,
@@ -359,8 +496,13 @@ export function useDesktopState(initialWallpaper: OSWallpaperId) {
     updateWidgetPosition,
     widgetSizes,
     updateWidgetSize,
+    widgetUserPrefs,
+    updateWidgetUserPrefs,
+    resetSingleWidgetPrefs,
     resetWidgetPositions,
     windowAnimation,
+    windowControlsSide,
+    setWindowControlsSide,
     iconBgStyle,
     iconBgColor,
     iconGradColor1,

@@ -121,10 +121,10 @@ import {
 
 | Component | Key Props | Description |
 | :--- | :--- | :--- |
-| `<Select />` | `value`, `onChange`, `options: { value, label, description?, badge? }[]`, `surface` | Dropdown selector with per-option badge and subtitle |
+| `<Select />` | `value`, `onChange`, `searchable`, `options: { value, label, description?, badge? }[]`, `surface` | Portal-rendered (`document.body`) dropdown selector with Turkish diacritic-insensitive multi-token search (`matchesTrSearch`) |
 | `<Textarea />` | `value`, `onChange`, `rows`, `maxLength`, `showCharacterCount`, `quickTemplates: string[]` | Multi-line text field with quick-insert template pills |
 | `<Switch />` | `value: boolean`, `onChange: (next: boolean) => void`, `label`, `description`, `tone`, `size` | Fluid spring thumb with transient Liquid Glass lens |
-| `<Checkbox />` | `value: boolean`, `indeterminate?: boolean`, `onChange`, `label`, `description`, `tone` | Animated SVG checkmark and partial (`-`) selection state |
+| `<Checkbox />` | `value: boolean`, `indeterminate?: boolean`, `variant?: 'default' \| 'capsule'`, `onChange`, `label`, `description`, `tone` | Animated SVG checkmark, partial (`-`) state, and full-row Apple HIG `capsule` card variant |
 | `<Slider />` | `value: number`, `onChange: (next: number) => void`, `min`, `max`, `step`, `showTicks`, `valueSuffix` | Control Center slider with tick marks |
 
 ---

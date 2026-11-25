@@ -9,6 +9,7 @@ import {
   Palette,
   RotateCcw,
   Search,
+  SlidersHorizontal,
   Smartphone,
 } from 'lucide-react';
 import { ContextMenuItem, MenuBarClock } from './WindowChrome';
@@ -33,7 +34,9 @@ export function TopMenuTray({
   onToggleWidgets,
   enabledWidgets,
   onToggleWidgetItem,
+  onCustomizeWidget,
   onResetWidgetPositions,
+  isDark = false,
   trayIconBtnStyle,
   dropdownStyle,
 }: {
@@ -53,7 +56,9 @@ export function TopMenuTray({
   onToggleWidgets?: () => void;
   enabledWidgets?: Record<DesktopWidgetId, boolean>;
   onToggleWidgetItem?: (id: DesktopWidgetId) => void;
+  onCustomizeWidget?: (id: DesktopWidgetId, anchorX: number, anchorY: number) => void;
   onResetWidgetPositions?: () => void;
+  isDark?: boolean;
   trayIconBtnStyle: (active?: boolean) => React.CSSProperties;
   dropdownStyle: React.CSSProperties;
 }) {
@@ -149,20 +154,19 @@ export function TopMenuTray({
               ...dropdownStyle,
               left: 'auto',
               right: 0,
-              width: 236,
+              width: 268,
             }}
           >
             <div
               style={{
-                padding: '4px 8px 3px',
-                fontSize: 10.5,
+                padding: '5px 8px 3px',
+                fontSize: 11,
                 fontWeight: 700,
-                opacity: 0.58,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
+                opacity: 0.65,
+                letterSpacing: '0.02em',
               }}
             >
-              {isTR ? 'Widget Ayarları' : 'Widget Settings'}
+              {isTR ? 'Masaüstü Widget Ayarları' : 'Desktop Widget Settings'}
             </div>
             {onToggleWidgets && (
               <ContextMenuItem
@@ -182,25 +186,71 @@ export function TopMenuTray({
             <div style={{ height: 1, backgroundColor: 'rgba(148,163,184,0.2)', margin: '4px 0' }} />
             {enabledWidgets &&
               onToggleWidgetItem &&
-              WIDGET_LABELS.map((w) => (
-                <ContextMenuItem
-                  key={w.id}
-                  icon={
-                    <span
-                      style={{
-                        width: 14,
-                        display: 'inline-flex',
-                        justifyContent: 'center',
-                        color: enabledWidgets[w.id] ? '#3b82f6' : 'transparent',
-                      }}
-                    >
-                      <Check size={13} />
-                    </span>
-                  }
-                  label={isTR ? w.tr : w.en}
-                  onClick={() => onToggleWidgetItem(w.id)}
-                />
-              ))}
+              WIDGET_LABELS.map((w) => {
+                const label = isTR ? w.tr : w.en;
+                return (
+                  <div
+                    key={w.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 4,
+                      padding: '1px 3px 1px 0',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <ContextMenuItem
+                        icon={
+                          <span
+                            style={{
+                              width: 14,
+                              display: 'inline-flex',
+                              justifyContent: 'center',
+                              color: enabledWidgets[w.id] ? '#3b82f6' : 'transparent',
+                            }}
+                          >
+                            <Check size={13} />
+                          </span>
+                        }
+                        label={label}
+                        onClick={() => onToggleWidgetItem(w.id)}
+                      />
+                    </div>
+                    {onCustomizeWidget && (
+                      <button
+                        type="button"
+                        data-menu-widget-settings={w.id}
+                        title={isTR ? `${label} Ayarları` : `${label} Settings`}
+                        aria-label={isTR ? `${label} Ayarları` : `${label} Settings`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          closeAllMenus();
+                          onCustomizeWidget(w.id, rect.right - 304, rect.bottom + 8);
+                        }}
+                        style={{
+                          width: 26,
+                          height: 26,
+                          flexShrink: 0,
+                          borderRadius: 7,
+                          border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(15,23,42,0.10)',
+                          background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.04)',
+                          color: isDark ? '#cbd5e1' : '#475569',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        <SlidersHorizontal size={12.5} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             {!showMobileLayout && onResetWidgetPositions && (
               <>
                 <div style={{ height: 1, backgroundColor: 'rgba(148,163,184,0.2)', margin: '4px 0' }} />

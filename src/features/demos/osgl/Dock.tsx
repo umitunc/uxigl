@@ -26,6 +26,7 @@ export function Dock({
   primaryColor,
   onOpenApp,
   onCloseApp,
+  onOpenDockCustomizer,
   onArrangeGrid,
   onResetWindows,
   onCloseAll,
@@ -45,6 +46,7 @@ export function Dock({
   primaryColor: string;
   onOpenApp: (id: string) => void;
   onCloseApp?: (id: string) => void;
+  onOpenDockCustomizer?: () => void;
   onArrangeGrid: () => void;
   onResetWindows: () => void;
   onCloseAll: () => void;
@@ -319,9 +321,20 @@ export function Dock({
 
       {(
         [
+          ...(onOpenDockCustomizer
+            ? [
+                {
+                  id: 'dock-customize',
+                  label: isTR ? 'Alt Dock Simgelerini Özelleştir' : 'Customize Dock Icons',
+                  googleIcon: 'add_circle',
+                  gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                  onClick: onOpenDockCustomizer,
+                },
+              ]
+            : []),
           {
             id: 'dock-arrange-grid',
-            label: 'Pencereleri Izgara Diz',
+            label: isTR ? 'Pencereleri Izgara Diz' : 'Tile Windows (Grid)',
             googleIcon: 'grid_view',
             gradient: 'linear-gradient(135deg, #0ea5e9, #0369a1)',
             onClick: onArrangeGrid,

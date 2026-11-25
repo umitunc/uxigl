@@ -34,7 +34,7 @@ export function useDesktopState({
   dockAppIds,
   widgets,
   scopeKey,
-  initialWallpaper = 'dijios-oxford',
+  initialWallpaper = 'oxford-navy',
 }: {
   apps: OSWorkspaceApp[];
   dockAppIds?: string[];
@@ -228,7 +228,7 @@ export function useDesktopState({
     if (!canvasRef.current || !useWebGLAurora) return;
     return startOSWebGLWallpaper(
       canvasRef.current,
-      () => OS_WALLPAPERS[wallpaperRef.current] ?? OS_WALLPAPERS['dijios-oxford'],
+      () => OS_WALLPAPERS[wallpaperRef.current] ?? OS_WALLPAPERS['oxford-navy'],
       () => isDarkRef.current
     );
   }, [useWebGLAurora]);

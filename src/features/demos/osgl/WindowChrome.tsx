@@ -3,14 +3,20 @@ import { ChevronRight } from 'lucide-react';
 
 export function TrafficLights({
   maximized,
+  fullscreen = false,
+  controlsSide = 'left',
   onClose,
   onMinimize,
   onMaximize,
+  onFullscreen,
 }: {
   maximized: boolean;
+  fullscreen?: boolean;
+  controlsSide?: 'left' | 'right';
   onClose: () => void;
   onMinimize: () => void;
   onMaximize: () => void;
+  onFullscreen?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -35,7 +41,12 @@ export function TrafficLights({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onPointerDown={(e) => e.stopPropagation()}
-      style={{ display: 'flex', alignItems: 'center', gap: 7 }}
+      style={{
+        display: 'flex',
+        flexDirection: controlsSide === 'right' ? 'row-reverse' : 'row',
+        alignItems: 'center',
+        gap: 7,
+      }}
     >
       <button
         type="button"
@@ -72,7 +83,7 @@ export function TrafficLights({
       <button
         type="button"
         aria-label="Büyüt"
-        title={maximized ? 'Önceki Boyut' : 'Tam Ekran'}
+        title={maximized ? 'Önceki Boyut' : 'Ekranı Kapla'}
         onClick={(e) => {
           e.stopPropagation();
           onMaximize();
@@ -91,6 +102,24 @@ export function TrafficLights({
           )
         ) : null}
       </button>
+      {onFullscreen && (
+        <button
+          type="button"
+          aria-label={fullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
+          title={fullscreen ? 'Tam Ekrandan Çık (Esc)' : 'Tam Ekran'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFullscreen();
+          }}
+          style={btnStyle('#38bdf8')}
+        >
+          {hovered ? (
+            <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+              <path d="M1.5 3V1.5H3M5 1.5H6.5V3M6.5 5V6.5H5M3 6.5H1.5V5" />
+            </svg>
+          ) : null}
+        </button>
+      )}
     </div>
   );
 }

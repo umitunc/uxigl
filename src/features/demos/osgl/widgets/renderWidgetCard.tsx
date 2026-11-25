@@ -12,6 +12,7 @@ import {
 } from './widgetProductivityCards';
 import { TodoWidgetCard } from './TodoWidgetCard';
 import { TimeFlowWidgetCard } from './TimeFlowWidgetCard';
+import type { WidgetUserPrefs } from './widgetCustomization';
 
 export const DESKTOP_WIDGET_ORDER: DesktopWidgetId[] = [
   'clock',
@@ -90,6 +91,7 @@ export function renderWidgetCard(
     openWindowCount: number;
     glassBlur: number;
     onOpenApp: (id: string) => void;
+    prefs?: WidgetUserPrefs;
   }
 ): React.ReactNode {
   switch (id) {
@@ -97,8 +99,10 @@ export function renderWidgetCard(
       return <ClockWidgetCard theme={theme} onOpenCalendar={() => deps.onOpenApp('calendar')} />;
     case 'kpi':
       return <DashboardKpiWidgetCard theme={theme} onOpenApp={deps.onOpenApp} />;
-    case 'timer':
-      return <FocusTimerWidgetCard theme={theme} />;
+    case 'timer': {
+      const defaultMinutes = Number(deps.prefs?.options?.defaultMinutes ?? '25') || 25;
+      return <FocusTimerWidgetCard theme={theme} defaultMinutes={defaultMinutes} />;
+    }
     case 'todo':
       return <TodoWidgetCard theme={theme} />;
     case 'notes':

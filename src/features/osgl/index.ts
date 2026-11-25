@@ -1,6 +1,7 @@
 export * from './osglEngine';
 export * from './types';
 export * from './widgetCustomization';
+export * from './widgetLayout';
 export * from './desktopGridUtils';
 export * from './desktopFoldersAndDock';
 export * from './windowGeometry';

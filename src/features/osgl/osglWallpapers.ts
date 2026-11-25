@@ -3,6 +3,7 @@
  */
 
 export type OSWallpaperId =
+  | 'oxford-navy'
   | 'dijios-oxford'
   | 'sequoia'
   | 'sonoma'
@@ -23,8 +24,18 @@ export interface WallpaperPalette {
 }
 
 export const OS_WALLPAPERS: Record<OSWallpaperId, WallpaperPalette> = {
+  'oxford-navy': {
+    name: 'Oxford Navy',
+    isLight: false,
+    preview: 'linear-gradient(135deg, #002147, #1d3557, #457b9d)',
+    fallbackCss: 'linear-gradient(145deg, #001833 0%, #002147 52%, #1d3557 100%)',
+    colorA: [0.07, 0.34, 0.56],
+    colorB: [0.27, 0.48, 0.62],
+    colorC: [0.11, 0.21, 0.38],
+    colorBg: [0.02, 0.08, 0.18],
+  },
   'dijios-oxford': {
-    name: 'DijiOS Oxford',
+    name: 'Oxford Classic',
     isLight: false,
     preview: 'linear-gradient(135deg, #002147, #1d3557, #457b9d)',
     fallbackCss: 'linear-gradient(145deg, #001833 0%, #002147 52%, #1d3557 100%)',

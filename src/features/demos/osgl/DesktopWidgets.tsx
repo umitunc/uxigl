@@ -2,11 +2,6 @@ import React, { useRef, useState } from 'react';
 import { GripHorizontal } from 'lucide-react';
 import {
   DEFAULT_WIDGET_SIZES,
-  WIDGET_GRID_STEP,
-  WIDGET_MAX_HEIGHT,
-  WIDGET_MAX_WIDTH,
-  WIDGET_MIN_HEIGHT,
-  WIDGET_MIN_WIDTH,
   type DesktopWidgetId,
   type QualityMode,
   type WidgetPosition,
@@ -18,10 +13,20 @@ import {
   renderWidgetCard,
 } from './widgets/renderWidgetCard';
 import type { WidgetThemeStyle } from './widgets/widgetCards';
-
-function snapToGrid(val: number): number {
-  return Math.round(val / WIDGET_GRID_STEP) * WIDGET_GRID_STEP;
-}
+import {
+  resolveCustomizedWidgetCardStyle,
+  type WidgetUserPrefs,
+} from './widgets/widgetCustomization';
+import {
+  clampWidgetPosition,
+  clampWidgetSize,
+  computeWidgetMagneticSnap,
+  computeWidgetResizeMagneticSnap,
+  resolveWidgetOverlaps,
+  snapWidgetToGrid,
+  type MagneticGuideLine,
+  type WidgetNeighborRect,
+} from './widgets/widgetLayoutSolver';
 
 export function DesktopWidgets({
   locale,
@@ -37,6 +42,8 @@ export function DesktopWidgets({
   onMoveWidget,
   widgetSizes,
   onResizeWidget,
+  widgetUserPrefs = {},
+  onOpenCustomize,
   viewportSize,
   onOpenApp,
 }: {
@@ -53,11 +60,16 @@ export function DesktopWidgets({
   onMoveWidget: (id: DesktopWidgetId, pos: WidgetPosition) => void;
   widgetSizes: Record<DesktopWidgetId, WidgetSize>;
   onResizeWidget: (id: DesktopWidgetId, size: WidgetSize) => void;
+  widgetUserPrefs?: Partial<Record<DesktopWidgetId, WidgetUserPrefs>>;
+  onOpenCustomize?: (id: DesktopWidgetId, anchorX: number, anchorY: number) => void;
   viewportSize: { w: number; h: number };
   onOpenApp: (id: string) => void;
 }) {
+  const latestNeighborRectsRef = useRef<WidgetNeighborRect[]>([]);
   const [draggingId, setDraggingId] = useState<DesktopWidgetId | null>(null);
   const [dragPreviewPos, setDragPreviewPos] = useState<WidgetPosition | null>(null);
+  const [magneticGuides, setMagneticGuides] = useState<MagneticGuideLine[]>([]);
+
   const dragRef = useRef<{
     id: DesktopWidgetId;
     startX: number;
@@ -66,6 +78,8 @@ export function DesktopWidgets({
     origY: number;
     width: number;
     height: number;
+    snappedX: boolean;
+    snappedY: boolean;
   } | null>(null);
 
   const [resizingId, setResizingId] = useState<DesktopWidgetId | null>(null);
@@ -78,6 +92,8 @@ export function DesktopWidgets({
     origH: number;
     posX: number;
     posY: number;
+    snappedW: boolean;
+    snappedH: boolean;
   } | null>(null);
 
   const baseTheme = createWidgetBaseTheme({
@@ -88,23 +104,14 @@ export function DesktopWidgets({
     primaryColor,
   });
 
-  const clampSize = (rawW: number, rawH: number, posX: number, posY: number): WidgetSize => {
-    const availW = Math.max(WIDGET_MIN_WIDTH, Math.min(WIDGET_MAX_WIDTH, viewportSize.w - posX - 12));
-    const availH = Math.max(WIDGET_MIN_HEIGHT, Math.min(WIDGET_MAX_HEIGHT, viewportSize.h - posY - 44));
-    return {
-      width: Math.max(WIDGET_MIN_WIDTH, Math.min(rawW, availW)),
-      height: Math.max(WIDGET_MIN_HEIGHT, Math.min(rawH, availH)),
-    };
-  };
+  const clampSize = (rawW: number, rawH: number, posX: number, posY: number): WidgetSize =>
+    clampWidgetSize(rawW, rawH, posX, posY, viewportSize.w, viewportSize.h);
 
-  const clampPos = (rawX: number, rawY: number, width: number, height: number): WidgetPosition => {
-    const maxX = Math.max(12, viewportSize.w - width - 12);
-    const maxY = Math.max(12, viewportSize.h - 44 - Math.min(height, 140));
-    return {
-      x: Math.max(12, Math.min(rawX, maxX)),
-      y: Math.max(12, Math.min(rawY, maxY)),
-    };
-  };
+  const clampPos = (rawX: number, rawY: number, width: number, height: number): WidgetPosition =>
+    clampWidgetPosition(rawX, rawY, width, height, viewportSize.w, viewportSize.h);
+
+  const getNeighbors = (excludeId: DesktopWidgetId) =>
+    latestNeighborRectsRef.current.filter((r) => r.id !== excludeId);
 
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>,
@@ -114,12 +121,10 @@ export function DesktopWidgets({
     if (target?.closest('button, input, textarea, select, a, [data-widget-resize]')) return;
     e.stopPropagation();
     const size = widgetSizes[id] ?? DEFAULT_WIDGET_SIZES[id];
-    const currentPos = clampPos(
-      widgetPositions[id]?.x ?? 20,
-      widgetPositions[id]?.y ?? 20,
-      size.width,
-      size.height
-    );
+    const currentResolved = latestNeighborRectsRef.current.find((r) => r.id === id);
+    const currentPos = currentResolved
+      ? { x: currentResolved.x, y: currentResolved.y }
+      : clampPos(widgetPositions[id]?.x ?? 20, widgetPositions[id]?.y ?? 20, size.width, size.height);
     dragRef.current = {
       id,
       startX: e.clientX,
@@ -128,33 +133,72 @@ export function DesktopWidgets({
       origY: currentPos.y,
       width: size.width,
       height: size.height,
+      snappedX: false,
+      snappedY: false,
     };
     setDraggingId(id);
     setDragPreviewPos(currentPos);
+    setMagneticGuides([]);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     if (!d) return;
-    const next = clampPos(
-      d.origX + (e.clientX - d.startX),
-      d.origY + (e.clientY - d.startY),
-      d.width,
-      d.height
-    );
-    setDragPreviewPos(next);
+    const snapped = computeWidgetMagneticSnap({
+      rawX: d.origX + (e.clientX - d.startX),
+      rawY: d.origY + (e.clientY - d.startY),
+      width: d.width,
+      height: d.height,
+      neighbors: getNeighbors(d.id),
+      viewportW: viewportSize.w,
+      viewportH: viewportSize.h,
+    });
+    d.snappedX = snapped.snappedX;
+    d.snappedY = snapped.snappedY;
+    setDragPreviewPos({ x: snapped.x, y: snapped.y });
+    setMagneticGuides(snapped.guides);
   };
 
   const handlePointerUp = () => {
     const d = dragRef.current;
     if (!d) return;
+    const neighbors = getNeighbors(d.id);
     const finalRaw = dragPreviewPos ?? { x: d.origX, y: d.origY };
-    const snapped = clampPos(snapToGrid(finalRaw.x), snapToGrid(finalRaw.y), d.width, d.height);
-    onMoveWidget(d.id, snapped);
+    const candX = d.snappedX ? finalRaw.x : snapWidgetToGrid(finalRaw.x);
+    const candY = d.snappedY ? finalRaw.y : snapWidgetToGrid(finalRaw.y);
+    const postSnap = computeWidgetMagneticSnap({
+      rawX: candX,
+      rawY: candY,
+      width: d.width,
+      height: d.height,
+      neighbors,
+      viewportW: viewportSize.w,
+      viewportH: viewportSize.h,
+    });
+    const clamped = clampPos(
+      postSnap.snappedX ? postSnap.x : candX,
+      postSnap.snappedY ? postSnap.y : candY,
+      d.width,
+      d.height
+    );
+    const resolved = resolveWidgetOverlaps(
+      [
+        ...neighbors.map((n) => ({
+          id: n.id,
+          pos: { x: n.x, y: n.y },
+          size: { width: n.width, height: n.height },
+          locked: true,
+        })),
+        { id: d.id, pos: clamped, size: { width: d.width, height: d.height }, locked: false },
+      ],
+      viewportSize.h
+    );
+    onMoveWidget(d.id, resolved[d.id] ?? clamped);
     dragRef.current = null;
     setDraggingId(null);
     setDragPreviewPos(null);
+    setMagneticGuides([]);
   };
 
   const handleResizePointerDown = (
@@ -173,36 +217,88 @@ export function DesktopWidgets({
       origH: size.height,
       posX: pos.x,
       posY: pos.y,
+      snappedW: false,
+      snappedH: false,
     };
     setResizingId(id);
     setResizePreviewSize(size);
+    setMagneticGuides([]);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handleResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const r = resizeRef.current;
     if (!r) return;
-    const next = clampSize(
-      r.origW + (e.clientX - r.startX),
-      r.origH + (e.clientY - r.startY),
-      r.posX,
-      r.posY
-    );
-    setResizePreviewSize(next);
+    const snapped = computeWidgetResizeMagneticSnap({
+      posX: r.posX,
+      posY: r.posY,
+      rawW: r.origW + (e.clientX - r.startX),
+      rawH: r.origH + (e.clientY - r.startY),
+      neighbors: getNeighbors(r.id),
+      viewportW: viewportSize.w,
+      viewportH: viewportSize.h,
+    });
+    r.snappedW = snapped.snappedW;
+    r.snappedH = snapped.snappedH;
+    setResizePreviewSize({ width: snapped.width, height: snapped.height });
+    setMagneticGuides(snapped.guides);
   };
 
   const handleResizePointerUp = () => {
     const r = resizeRef.current;
     if (!r) return;
     const raw = resizePreviewSize ?? { width: r.origW, height: r.origH };
-    const snapped = clampSize(snapToGrid(raw.width), snapToGrid(raw.height), r.posX, r.posY);
+    const snapped = clampSize(
+      r.snappedW ? raw.width : snapWidgetToGrid(raw.width),
+      r.snappedH ? raw.height : snapWidgetToGrid(raw.height),
+      r.posX,
+      r.posY
+    );
     onResizeWidget(r.id, snapped);
     resizeRef.current = null;
     setResizingId(null);
     setResizePreviewSize(null);
+    setMagneticGuides([]);
   };
 
-  const widgetIds = DESKTOP_WIDGET_ORDER;
+  const visibleItems = DESKTOP_WIDGET_ORDER.filter((id) => enabledWidgets[id]).map((id) => {
+    const isDragging = draggingId === id;
+    const isResizing = resizingId === id;
+    const defSize = DEFAULT_WIDGET_SIZES[id];
+    const rawSize = isResizing && resizePreviewSize ? resizePreviewSize : (widgetSizes[id] ?? defSize);
+    const pos =
+      isDragging && dragPreviewPos
+        ? dragPreviewPos
+        : clampPos(
+            widgetPositions[id]?.x ?? 20,
+            widgetPositions[id]?.y ?? 20,
+            rawSize.width,
+            rawSize.height
+          );
+    const size = clampSize(rawSize.width, rawSize.height, pos.x, pos.y);
+    return { id, isDragging, isResizing, defSize, rawSize, pos, size };
+  });
+
+  const resolvedPositions = resolveWidgetOverlaps(
+    visibleItems.map((item) => ({
+      id: item.id,
+      pos: item.pos,
+      size: item.size,
+      locked: item.isDragging || item.isResizing,
+    })),
+    viewportSize.h
+  );
+
+  latestNeighborRectsRef.current = visibleItems.map((item) => {
+    const rPos = resolvedPositions[item.id] ?? item.pos;
+    return {
+      id: item.id,
+      x: rPos.x,
+      y: rPos.y,
+      width: item.size.width,
+      height: item.size.height,
+    };
+  });
 
   return (
     <div
@@ -210,20 +306,48 @@ export function DesktopWidgets({
       style={{
         position: 'absolute',
         inset: 0,
-        zIndex: 2, // Strictly underneath FloatingWindows (zIndex >= 20)
+        zIndex: 2,
         pointerEvents: 'none',
         overflow: 'hidden',
       }}
     >
-      {/* Subtle grid-snap target outline while dragging any widget */}
+      {magneticGuides.map((g, idx) => (
+        <div
+          key={`${g.orientation}-${g.pos}-${idx}`}
+          data-osgl-magnetic-guide={g.kind}
+          aria-hidden="true"
+          style={
+            g.orientation === 'vertical'
+              ? {
+                  position: 'absolute',
+                  left: g.pos,
+                  top: g.start,
+                  width: 0,
+                  height: Math.max(16, g.end - g.start),
+                  borderLeft: `1.5px ${g.kind === 'margin' ? 'dashed' : 'solid'} ${primaryColor}`,
+                  boxShadow: `0 0 8px ${primaryColor}`,
+                  opacity: 0.85,
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }
+              : {
+                  position: 'absolute',
+                  left: g.start,
+                  top: g.pos,
+                  width: Math.max(16, g.end - g.start),
+                  height: 0,
+                  borderTop: `1.5px ${g.kind === 'margin' ? 'dashed' : 'solid'} ${primaryColor}`,
+                  boxShadow: `0 0 8px ${primaryColor}`,
+                  opacity: 0.85,
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }
+          }
+        />
+      ))}
+
       {draggingId && dragPreviewPos && (() => {
         const dragSize = widgetSizes[draggingId] ?? DEFAULT_WIDGET_SIZES[draggingId];
-        const snappedPos = clampPos(
-          snapToGrid(dragPreviewPos.x),
-          snapToGrid(dragPreviewPos.y),
-          dragSize.width,
-          dragSize.height
-        );
         return (
           <div
             aria-hidden="true"
@@ -236,28 +360,16 @@ export function DesktopWidgets({
               borderRadius: 16,
               border: `2px dashed ${primaryColor}`,
               backgroundColor: isDark ? 'rgba(59,130,246,0.10)' : 'rgba(59,130,246,0.08)',
-              transform: `translate3d(${snappedPos.x}px, ${snappedPos.y}px, 0)`,
-              transition: 'transform 80ms ease-out',
+              transform: `translate3d(${dragPreviewPos.x}px, ${dragPreviewPos.y}px, 0)`,
+              transition: 'transform 60ms ease-out',
               pointerEvents: 'none',
             }}
           />
         );
       })()}
 
-      {/* Subtle grid-snap target outline while resizing any widget */}
       {resizingId && resizePreviewSize && (() => {
-        const rPos = clampPos(
-          widgetPositions[resizingId]?.x ?? 20,
-          widgetPositions[resizingId]?.y ?? 20,
-          resizePreviewSize.width,
-          resizePreviewSize.height
-        );
-        const snappedSize = clampSize(
-          snapToGrid(resizePreviewSize.width),
-          snapToGrid(resizePreviewSize.height),
-          rPos.x,
-          rPos.y
-        );
+        const rPos = resolvedPositions[resizingId] ?? { x: 20, y: 20 };
         return (
           <div
             aria-hidden="true"
@@ -265,41 +377,37 @@ export function DesktopWidgets({
               position: 'absolute',
               left: 0,
               top: 0,
-              width: snappedSize.width,
-              height: snappedSize.height,
+              width: resizePreviewSize.width,
+              height: resizePreviewSize.height,
               borderRadius: 16,
               border: `2px dashed ${primaryColor}`,
               backgroundColor: isDark ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.06)',
               transform: `translate3d(${rPos.x}px, ${rPos.y}px, 0)`,
-              transition: 'width 80ms ease-out, height 80ms ease-out',
+              transition: 'width 60ms ease-out, height 60ms ease-out',
               pointerEvents: 'none',
             }}
           />
         );
       })()}
 
-      {widgetIds.map((id) => {
-        if (!enabledWidgets[id]) return null;
-        const isDragging = draggingId === id;
-        const isResizing = resizingId === id;
-        const defSize = DEFAULT_WIDGET_SIZES[id];
-        const rawSize = isResizing && resizePreviewSize ? resizePreviewSize : (widgetSizes[id] ?? defSize);
-        const basePos =
-          isDragging && dragPreviewPos
-            ? dragPreviewPos
-            : clampPos(
-                widgetPositions[id]?.x ?? 20,
-                widgetPositions[id]?.y ?? 20,
-                rawSize.width,
-                rawSize.height
-              );
+      {visibleItems.map(({ id, isDragging, isResizing, defSize, rawSize }) => {
+        const basePos = resolvedPositions[id] ?? { x: 20, y: 20 };
         const size = clampSize(rawSize.width, rawSize.height, basePos.x, basePos.y);
         const scale = Math.max(
           0.85,
           Math.min(2.1, Math.min(size.width / defSize.width, size.height / defSize.height))
         );
+        const prefs = widgetUserPrefs[id];
+        const effectiveAccent = prefs?.accentHex || primaryColor;
         const widgetTheme: WidgetThemeStyle = {
           ...baseTheme,
+          primaryColor: effectiveAccent,
+          cardStyle: resolveCustomizedWidgetCardStyle({
+            baseCardStyle: baseTheme.cardStyle,
+            isDark,
+            effectiveAccent,
+            prefs,
+          }),
           width: size.width,
           height: size.height,
           scale,
@@ -310,7 +418,11 @@ export function DesktopWidgets({
             key={id}
             data-desktop-widget={id}
             onMouseDown={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.stopPropagation()}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onOpenCustomize?.(id, e.clientX, e.clientY);
+            }}
             onPointerDown={(e) => handlePointerDown(e, id)}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -331,7 +443,6 @@ export function DesktopWidgets({
                   : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1), width 160ms ease, height 160ms ease',
             }}
           >
-            {/* Subtle top drag grip indicator */}
             <div
               title={locale === 'tr' ? 'Izgarada taşımak için sürükleyin' : 'Drag to move on grid'}
               style={{
@@ -353,9 +464,9 @@ export function DesktopWidgets({
               openWindowCount,
               glassBlur,
               onOpenApp,
+              prefs,
             })}
 
-            {/* Bottom-right corner resize handle */}
             <div
               data-widget-resize={id}
               title={locale === 'tr' ? 'Boyutlandırmak için sürükleyin' : 'Drag to resize'}

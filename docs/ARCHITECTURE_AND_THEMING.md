@@ -63,8 +63,14 @@ const {
   setGlassIntensity,  // (intensity: number) => void (15 to 100)
   setWebglEnabled,    // (enabled: boolean) => void
   setWebglPreset,     // (preset: 'aurora' | 'nebula' | 'cyber-grid' | 'liquid-metal') => void
+  setWorkspaceShell,  // (shell: WorkspaceShellId) => void ('osgl' | 'enterprisegl' | 'flowgl' | 'tesseragl' | 'cargogl' | 'synthgl')
+  userScopeKey,       // Active storage scope key for multi-user / multi-tenant isolation
+  setUserScopeKey,    // (scopeKey?: string) => void (cleanly resets to defaults when unpopulated)
 } = useTheme();
 ```
+
+### Multi-Tenant Scoped Persistence & `WorkspaceShellGallery`
+Pass `initialUserScopeKey` to `<ThemeProvider initialUserScopeKey={userId}>` (or call `setUserScopeKey(userId)` on login/switch) so each user's palette, mode, border contrast, and `workspaceShell` selection (`WORKSPACE_SHELL_CATALOG` / `<WorkspaceShellGallery />`) are stored in an isolated `localStorage` namespace without cross-user leakage. For full desktop workspaces, see [`OSGL_GUIDE.md`](./OSGL_GUIDE.md).
 
 ---
 

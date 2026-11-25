@@ -109,6 +109,87 @@ saveOSGLState('my-app-os', { ...current, dockVisible: true });
 const savedNotes = loadOSGLWidgetData<string[]>('sticky_notes', [], 'my-app-os');
 saveOSGLWidgetData('sticky_notes', [...savedNotes, 'Yeni görev'], 'my-app-os');`;
 
+export const OSGL_MAGNETIC_AND_WINDOW_OPS_SNIPPET = `import {
+  WIDGET_MAGNETIC_MARGIN, // 16px minimum breathing room between widgets
+  WINDOW_MAGNETIC_MARGIN, // 12px magnetic margin between floating/snapped windows
+  RESIZE_HANDLE_SPECS,    // 8-way resize handles: n, s, e, w, ne, nw, se, sw
+  resolveWidgetOverlaps,
+  computeWidgetMagneticSnap,
+  computeWindowMagneticSnap,
+  computeSnapBounds,
+} from 'truncgil-uxigl';
+
+// 1. Widget'ların bitişik (0-15px) durmasını engeller; en az 16px nefes payı bırakır
+const resolvedWidgets = resolveWidgetOverlaps(
+  [
+    { id: 'focus-timer', pos: { x: 1020, y: 280 }, size: { width: 360, height: 180 }, locked: true },
+    { id: 'daily-flow', pos: { x: 1080, y: 460 }, size: { width: 300, height: 220 } },
+  ],
+  900
+);
+// resolvedWidgets['daily-flow'].y === 476 (280 + 180 + WIDGET_MAGNETIC_MARGIN)
+
+// 2. Pencere sürüklemede 12px manyetik boşluk + komşu kenar hizalama kılavuzları üretir
+const windowSnap = computeWindowMagneticSnap({
+  rawX: 656,
+  rawY: 44,
+  winW: 600,
+  winH: 480,
+  siblings: [{ x: 40, y: 44, width: 600, height: 480 }],
+  vw: 1440,
+  vh: 900,
+  dockVisible: true,
+});
+// windowSnap.x === 652 (640 + WINDOW_MAGNETIC_MARGIN), windowSnap.guides -> MagneticGuideLine[]
+
+// 3. Dock açıkken 4 köşe kadran ve yarı ekran snap sınırları 12px dış/iç boşluk korur
+const topLeftBounds = computeSnapBounds('top-left', 1440, 900, true);`;
+
+export function getOsglSpatialHelpersRows(isTR: boolean): DocPropRow[] {
+  return [
+    {
+      name: 'WIDGET_MAGNETIC_MARGIN / resolveWidgetOverlaps',
+      type: '16 / (items, vh, margin?) => Record<string, WidgetPosition>',
+      defaultValue: '16px',
+      description: isTR
+        ? 'Masaüstü widget’larının üst üste binmesini veya bitişik (0–15px) kalmasını önler; her iki widget arasında en az 16px manyetik boşluk korur.'
+        : 'Prevents desktop widgets from overlapping or sitting flush (0–15px), enforcing at least a 16px magnetic breathing margin.',
+    },
+    {
+      name: 'computeWidgetMagneticSnap / computeWidgetResizeMagneticSnap',
+      type: '(params) => { x, y, guides }',
+      defaultValue: 'threshold: 14px',
+      description: isTR
+        ? 'Sürükleme ve boyutlandırma sırasında komşu widget’larla 16px manyetik boşluk ve sol/sağ/üst/alt kenar hizası ile canlı kılavuz çizgileri üretir.'
+        : 'Computes 16px magnetic margin snaps, sibling edge alignments, and live MagneticGuideLine guides during widget drag and resize.',
+    },
+    {
+      name: 'WINDOW_MAGNETIC_MARGIN / computeWindowMagneticSnap',
+      type: '12 / (params) => { x, y, guides }',
+      defaultValue: '12px (threshold: 14px)',
+      description: isTR
+        ? 'Serbest pencereler taşınırken veya 8 yönden boyutlandırılırken komşu pencerelerle 12px manyetik boşluk ve kenar hizalaması sağlar.'
+        : 'Snaps floating windows to a 12px magnetic margin or clean edge alignment against sibling windows during drag and 8-way resize.',
+    },
+    {
+      name: 'RESIZE_HANDLE_SPECS / computeResizedWindowBounds',
+      type: "ReadonlyArray<ResizeHandleSpec> ('n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw')",
+      defaultValue: 'min 380×220px',
+      description: isTR
+        ? '4 kenar ve 4 köşe dahil 8 yönlü pencere boyutlandırma tutamaçları ve karşı kenarı sabitleyen sınır çözücüsü.'
+        : '8-directional edge and corner window resize handle specifications and opposite-edge anchored bounds solver.',
+    },
+    {
+      name: 'detectEdgeSnapZone / computeSnapBounds',
+      type: "'maximize' | 'left-half' | 'right-half' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'",
+      defaultValue: 'dockVisible: false',
+      description: isTR
+        ? '7 ekran kenarı/köşesi yapışma bölgesini algılar; Dock görünürken alt çubuğu ezmeden 12px manyetik boşluklu yerleşim üretir.'
+        : 'Detects all 7 screen-edge and quadrant snap zones, preserving Dock clearance and 12px magnetic margins when Dock is visible.',
+    },
+  ];
+}
+
 export function getOsglShellPropsRows(isTR: boolean): DocPropRow[] {
   return [
     {
@@ -275,17 +356,17 @@ export const OSGL_FEATURE_PILLARS: OsglFeatureCardItem[] = [
       'WebAssembly-backed bounds solver with smooth dragging, 8-way resizing, and smart window tiling.',
     bulletsTr: [
       '8 yönlü kenar/köşe boyutlandırma (n, s, e, w, ne, nw, se, sw) ve minimum 380×220px koruma.',
-      '7 Snap Bölgesi: Tam Ekran (maximize), Sol/Sağ Yarım ve 4 Köşe Kadranı.',
-      '4 Düzenleme Modu: Cascade, Grid, Side-by-Side (Yan Yana) ve Quadrants (2×2).',
-      'Sağ veya Sol pencere kontrol düğmeleri (Windows/Linux vs macOS trafik ışıkları).',
-      'Uygulama bazlı pencere konum/boyut hafızası (windowBoundsByApp) ve viewport resize koruması.',
+      '12px Manyetik Pencere Boşluğu (WINDOW_MAGNETIC_MARGIN): Serbest pencereler birbirine bitişmez, canlı hizalama kılavuzlarıyla mıknatıslanır.',
+      '7 Snap Bölgesi (Maximize, Sol/Sağ Yarı, 4 Köşe Kadran) + başlık çubuğundan sürükleyerek küçültme + Tam Ekran (Esc çıkışı).',
+      '4 Düzenleme Modu: Cascade, Grid, Side-by-Side (Yan Yana) ve Quadrants (2×2) + @container osgl-win duyarlı gövde.',
+      'Sağ veya Sol pencere kontrol düğmeleri (windowControlsSide) ve uygulama bazlı konum/boyut hafızası (windowBoundsByApp).',
     ],
     bulletsEn: [
       '8-direction edge/corner resizing (n, s, e, w, ne, nw, se, sw) with 380×220px min bounds.',
-      '7 Snap Zones: Maximize, Left/Right Half, and 4 Corner Quadrants.',
-      '4 Arrange Modes: Cascade, Grid, Side-by-Side, and Quadrants (2×2).',
-      'Switchable right or left window controls (traffic lights vs standard titlebar).',
-      'Per-app persisted window bounds (windowBoundsByApp) and automatic viewport clamping.',
+      '12px Window Magnetic Margin (WINDOW_MAGNETIC_MARGIN): Floating windows snap with live alignment guides instead of touching flush.',
+      '7 Snap Zones (Maximize, Left/Right Half, 4 Quadrants) + unmaximize-on-drag + Fullscreen (Esc exit).',
+      '4 Arrange Modes: Cascade, Grid, Side-by-Side, and Quadrants (2×2) + @container osgl-win responsive body.',
+      'Switchable right or left window controls (windowControlsSide) and persisted bounds (windowBoundsByApp).',
     ],
   },
   {
@@ -342,15 +423,15 @@ export const OSGL_FEATURE_PILLARS: OsglFeatureCardItem[] = [
     summaryEn:
       '20px snap-to-grid widget host with customizable surfaces and built-in FocusTimerWidget.',
     bulletsTr: [
-      '20px adımda sürükleme ve boyutlandırma (220–560px genişlik, 96–540px yükseklik).',
-      'Widget Özelleştirici: Cam / Düz / Tonlu yüzey, 7 vurgu rengi, özel başlık, Small/Medium/Large boyut önayarları.',
+      '16px Manyetik Widget Boşluğu (WIDGET_MAGNETIC_MARGIN): Widget’lar asla bitişik (0–15px) durmaz veya üst üste binmez; canlı kılavuz çizgileriyle hizalanır.',
+      'Üst menü satır içi ayar düğmesi ve sağ tık ile WidgetCustomizePopover: Cam / Düz / Tonlu yüzey, 7 vurgu rengi, S/M/L önayarları.',
       'WidgetCustomField ile her widget’a özel seçenek alanları tanımlayabilme.',
       'Hazır FocusTimerWidget: 5/15/25 dk + özel süre, SVG halka, Web Audio API bitiş zili ve otomatik döngü.',
       'Tam ekran veya çakışan pencere açıldığında widget’ların otomatik gizlenmesi.',
     ],
     bulletsEn: [
-      '20px grid-snapped dragging and resizing (220–560px width, 96–540px height).',
-      'WidgetCustomizePopover: Glass / Solid / Tinted surfaces, 7 accent swatches, custom title, S/M/L presets.',
+      '16px Widget Magnetic Margin (WIDGET_MAGNETIC_MARGIN): Widgets never overlap or sit flush (0–15px), snapping with live alignment guides.',
+      'Inline Top-Bar settings trigger & right-click WidgetCustomizePopover: Glass / Solid / Tinted surfaces, 7 accent swatches, S/M/L presets.',
       'Extensible WidgetCustomField API for widget-specific user settings.',
       'Built-in FocusTimerWidget: 5/15/25m + custom minutes, SVG ring, Web Audio API chime, and auto-loop.',
       'Auto-hides widgets when a window is maximized, fullscreen, or overlaps the widget column.',

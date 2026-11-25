@@ -128,17 +128,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     (scopeKey?: string) => {
       setUserScopeKeyState(scopeKey);
       const stored = storageAdapter.loadPreferences(scopeKey);
-      if (stored) {
-        const merged: ThemePreferences = {
-          ...DEFAULT_THEME_PREFERENCES,
-          ...initialPreferences,
-          ...stored,
-        };
-        setPreferences(merged);
-        const nextResolved: ResolvedThemeMode =
-          merged.mode === 'system' ? systemMode : merged.mode;
-        activeEngine.applyTheme(merged, nextResolved);
-      }
+      const merged: ThemePreferences = {
+        ...DEFAULT_THEME_PREFERENCES,
+        ...initialPreferences,
+        ...(stored ?? {}),
+      };
+      setPreferences(merged);
+      const nextResolved: ResolvedThemeMode =
+        merged.mode === 'system' ? systemMode : merged.mode;
+      activeEngine.applyTheme(merged, nextResolved);
     },
     [storageAdapter, initialPreferences, systemMode, activeEngine]
   );

@@ -14,9 +14,11 @@ import { DocsCodeBox } from '../components/DocsCodeBox';
 import {
   OSGL_FEATURE_PILLARS,
   OSGL_FULL_INTEGRATION_SNIPPET,
+  OSGL_MAGNETIC_AND_WINDOW_OPS_SNIPPET,
   OSGL_WIDGET_PERSISTENCE_SNIPPET,
   getOsglAppModelRows,
   getOsglShellPropsRows,
+  getOsglSpatialHelpersRows,
 } from '../data/osglDocsData';
 import type { DocPropRow } from '../types';
 
@@ -73,6 +75,7 @@ export const OSGLWorkspaceSection: React.FC<OSGLWorkspaceSectionProps> = ({
 }) => {
   const shellPropsRows = getOsglShellPropsRows(isTR);
   const appModelRows = getOsglAppModelRows(isTR);
+  const spatialHelperRows = getOsglSpatialHelpersRows(isTR);
 
   return (
     <div className="uxu-stack-md">
@@ -286,6 +289,38 @@ export const OSGLWorkspaceSection: React.FC<OSGLWorkspaceSectionProps> = ({
               </ul>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* 3.5 MAGNETIC MARGIN & WINDOW OPERATIONS API */}
+      <Card
+        id="doc-sec-osgl-magnetic-windows"
+        variant="glass"
+        padding="md"
+        eyebrow={isTR ? 'MANYETİK BOŞLUK & PENCERE MOTORU' : 'MAGNETIC MARGIN & WINDOW ENGINE'}
+        title={
+          isTR
+            ? 'Manyetik Boşluk (16px / 12px) & Gelişmiş Pencere İşlemleri API'
+            : 'Magnetic Margin (16px / 12px) & Advanced Window Operations API'
+        }
+        subtitle={
+          isTR
+            ? 'Widget ve pencerelerin birbirine bitişik (flush) yapışmasını engelleyen manyetik hizalama ve 8 yönlü / 7 bölgeli pencere çözücüleri'
+            : 'Spatial solvers preventing flush collisions with 16px widget & 12px window magnetic margins, live alignment guides, 8-way resize, and 7 snap zones'
+        }
+        headerIcon={<Cpu size={19} />}
+      >
+        <div className="uxu-stack-md">
+          <PropsTable rows={spatialHelperRows} isTR={isTR} />
+          <DocsCodeBox
+            title={
+              isTR
+                ? 'Manyetik Boşluk & Pencere Snap Yardımcıları (TypeScript)'
+                : 'Magnetic Margin & Window Snap Helpers (TypeScript)'
+            }
+            code={OSGL_MAGNETIC_AND_WINDOW_OPS_SNIPPET}
+            isTR={isTR}
+          />
         </div>
       </Card>
 

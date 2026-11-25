@@ -21,7 +21,8 @@ import {
   X,
 } from 'lucide-react';
 import { ContextMenuItem, ContextSubMenu } from './WindowChrome';
-import type { DesktopWidgetId } from './types';
+import type { SnapZone } from '../../osgl/windowGeometry';
+import type { DesktopWidgetId, WindowArrangeMode, WindowControlsSide } from './types';
 
 export type TopMenuKey = 'apps' | 'components' | 'window' | 'view' | 'tools' | 'lang' | 'widgets' | null;
 
@@ -42,7 +43,11 @@ export function TopMenuDropdowns({
   onToggleWidgetItem,
   windowAnimation,
   onToggleWindowAnimation,
+  windowControlsSide = 'left',
+  onToggleWindowControlsSide,
   onToggleMode,
+  onSnapActiveWindow,
+  onFullscreenActive,
   arrangeWindows,
   closeAllWindows,
   onResetIcons,
@@ -67,8 +72,12 @@ export function TopMenuDropdowns({
   onToggleWidgetItem?: (id: DesktopWidgetId) => void;
   windowAnimation: boolean;
   onToggleWindowAnimation: () => void;
+  windowControlsSide?: WindowControlsSide;
+  onToggleWindowControlsSide?: () => void;
   onToggleMode: () => void;
-  arrangeWindows: (mode: 'cascade' | 'grid' | 'side-by-side') => void;
+  onSnapActiveWindow?: (zone: Exclude<SnapZone, null>) => void;
+  onFullscreenActive?: () => void;
+  arrangeWindows: (mode: WindowArrangeMode) => void;
   closeAllWindows: () => void;
   onResetIcons: () => void;
   onOpenApp: (id: string) => void;
@@ -227,9 +236,45 @@ export function TopMenuDropdowns({
         </button>
         {activeMenu === 'window' && (
           <div data-menu-dropdown="window" onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
+            {onFullscreenActive && (
+              <ContextMenuItem
+                icon={<Monitor size={14} />}
+                label={isTR ? 'Aktif Pencereyi Tam Ekran Yap' : 'Fullscreen Active Window'}
+                onClick={() => { onFullscreenActive(); closeAllMenus(); }}
+              />
+            )}
+            {onSnapActiveWindow && (
+              <ContextSubMenu icon={<Columns2 size={14} />} label={isTR ? 'Aktif Pencereyi Köşeye Yasla' : 'Snap Active Window'} isDark={isDark}>
+                <ContextMenuItem icon={<Columns2 size={14} />} label={isTR ? 'Sol Yarıya Yasla' : 'Snap Left Half'} onClick={() => { onSnapActiveWindow('left-half'); closeAllMenus(); }} />
+                <ContextMenuItem icon={<Columns2 size={14} />} label={isTR ? 'Sağ Yarıya Yasla' : 'Snap Right Half'} onClick={() => { onSnapActiveWindow('right-half'); closeAllMenus(); }} />
+                <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? 'Sol Üst Çeyrek (1/4)' : 'Top-Left Quadrant'} onClick={() => { onSnapActiveWindow('top-left'); closeAllMenus(); }} />
+                <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? 'Sağ Üst Çeyrek (1/4)' : 'Top-Right Quadrant'} onClick={() => { onSnapActiveWindow('top-right'); closeAllMenus(); }} />
+                <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? 'Sol Alt Çeyrek (1/4)' : 'Bottom-Left Quadrant'} onClick={() => { onSnapActiveWindow('bottom-left'); closeAllMenus(); }} />
+                <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? 'Sağ Alt Çeyrek (1/4)' : 'Bottom-Right Quadrant'} onClick={() => { onSnapActiveWindow('bottom-right'); closeAllMenus(); }} />
+              </ContextSubMenu>
+            )}
             <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? 'Izgara Dizilimi (Grid)' : 'Tile Grid'} onClick={() => { arrangeWindows('grid'); closeAllMenus(); }} />
+            <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? '4 Köşe Kadran (2×2)' : '4-Corner Quadrants'} onClick={() => { arrangeWindows('quadrants'); closeAllMenus(); }} />
             <ContextMenuItem icon={<Layers size={14} />} label={isTR ? 'Kademeli Dizilim (Cascade)' : 'Cascade'} onClick={() => { arrangeWindows('cascade'); closeAllMenus(); }} />
             <ContextMenuItem icon={<Columns2 size={14} />} label={isTR ? 'Yan Yana Diz' : 'Side by Side'} onClick={() => { arrangeWindows('side-by-side'); closeAllMenus(); }} />
+            {onToggleWindowControlsSide && (
+              <ContextMenuItem
+                icon={<Monitor size={14} />}
+                label={
+                  windowControlsSide === 'left'
+                    ? isTR
+                      ? 'Pencere Düğmeleri: Sağa Al'
+                      : 'Window Controls: Move Right'
+                    : isTR
+                    ? 'Pencere Düğmeleri: Sola Al'
+                    : 'Window Controls: Move Left'
+                }
+                onClick={() => {
+                  onToggleWindowControlsSide();
+                  closeAllMenus();
+                }}
+              />
+            )}
             <ContextSubMenu icon={<Monitor size={14} />} label={isTR ? 'Hızlı Düzenler' : 'Quick Layouts'} isDark={isDark}>
               <ContextMenuItem icon={<Grid2x2 size={14} />} label={isTR ? '2×2 Eşit Izgara' : '2×2 Even Grid'} onClick={() => { arrangeWindows('grid'); closeAllMenus(); }} />
               <ContextMenuItem icon={<Columns2 size={14} />} label={isTR ? 'Sol / Sağ Bölünmüş' : 'Split Left / Right'} onClick={() => { arrangeWindows('side-by-side'); closeAllMenus(); }} />

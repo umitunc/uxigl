@@ -200,13 +200,15 @@ export function computeDefaultWidgetPositions(
   viewportWidth = 1366
 ): Record<string, WidgetPosition> {
   const result: Record<string, WidgetPosition> = {};
+  const margin = 16;
   const maxRightW = Math.max(300, ...widgets.filter((_, i) => i % 2 === 0).map((w) => w.defaultSize.width));
   const maxLeftW = Math.max(300, ...widgets.filter((_, i) => i % 2 === 1).map((w) => w.defaultSize.width));
-  const colRight = Math.max(
+  const rightAnchorX = Math.max(
     20,
-    Math.floor((viewportWidth - maxRightW - 24) / WIDGET_GRID_STEP) * WIDGET_GRID_STEP
+    Math.floor((viewportWidth - maxRightW - 20) / WIDGET_GRID_STEP) * WIDGET_GRID_STEP
   );
-  const colLeft = Math.max(20, colRight - maxLeftW - 16);
+  const rightEdge = rightAnchorX + maxRightW;
+  const leftRightEdge = Math.max(20 + maxLeftW, rightAnchorX - margin);
   const twoColumns = viewportWidth >= 1220 && widgets.length > 2;
 
   let rightY = 16;
@@ -214,11 +216,11 @@ export function computeDefaultWidgetPositions(
   widgets.forEach((w, idx) => {
     const useRight = !twoColumns || idx % 2 === 0;
     if (useRight) {
-      result[w.id] = { x: colRight, y: rightY };
-      rightY += w.defaultSize.height + 16;
+      result[w.id] = { x: Math.max(16, rightEdge - w.defaultSize.width), y: rightY };
+      rightY += w.defaultSize.height + margin;
     } else {
-      result[w.id] = { x: colLeft, y: leftY };
-      leftY += w.defaultSize.height + 16;
+      result[w.id] = { x: Math.max(16, leftRightEdge - w.defaultSize.width), y: leftY };
+      leftY += w.defaultSize.height + margin;
     }
   });
   return result;

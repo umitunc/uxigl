@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { DesktopFolderTile } from '../../osgl/DesktopFolderTile';
+import {
+  getGroupedAppIdSet,
+  toFolderSlotKey,
+} from '../../osgl/desktopFoldersAndDock';
 import {
   ENTERPRISE_APPS,
+  type DesktopFolder,
   type EnterpriseOSApp,
   type FloatingWindowState,
   type IconBgStyle,
@@ -27,6 +33,11 @@ export function DesktopGrid({
   setSelectedAppIds,
   windows,
   onOpenApp,
+  folders = [],
+  renamingFolderId = null,
+  onOpenFolder,
+  onCommitRenameFolder,
+  onDropAppsIntoFolder,
   children,
 }: {
   isDark: boolean;
@@ -47,6 +58,11 @@ export function DesktopGrid({
   setSelectedAppIds: React.Dispatch<React.SetStateAction<string[]>>;
   windows: FloatingWindowState[];
   onOpenApp: (id: string) => void;
+  folders?: DesktopFolder[];
+  renamingFolderId?: string | null;
+  onOpenFolder?: (folderId: string) => void;
+  onCommitRenameFolder?: (folderId: string, nextName: string) => void;
+  onDropAppsIntoFolder?: (folderId: string, appIds: string[]) => void;
   children?: React.ReactNode;
 }) {
   const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
@@ -73,12 +89,26 @@ export function DesktopGrid({
   const colsCount = Math.max(4, Math.floor((viewportSize.w - 48 + colGap) / (cellWidth + colGap)));
   const totalGridSlots = rowsPerColumn * colsCount;
 
+  const groupedAppIds = useMemo(() => getGroupedAppIdSet(folders), [folders]);
+
+  const slotToFolder = useMemo(() => {
+    const map = new Map<number, DesktopFolder>();
+    folders.forEach((folder) => {
+      const slot = iconSlots[toFolderSlotKey(folder.id)] ?? 0;
+      let resolved = Math.max(0, Math.min(totalGridSlots - 1, slot));
+      while (map.has(resolved) && resolved < totalGridSlots - 1) resolved += 1;
+      map.set(resolved, folder);
+    });
+    return map;
+  }, [folders, iconSlots, totalGridSlots]);
+
   const slotToApp = useMemo(() => {
     const map = new Map<number, EnterpriseOSApp>();
     const overflow: EnterpriseOSApp[] = [];
     ENTERPRISE_APPS.forEach((app) => {
+      if (groupedAppIds.has(app.id)) return;
       const slot = iconSlots[app.id] ?? 0;
-      if (slot < totalGridSlots && !map.has(slot)) {
+      if (slot < totalGridSlots && !map.has(slot) && !slotToFolder.has(slot)) {
         map.set(slot, app);
       } else {
         overflow.push(app);
@@ -86,11 +116,13 @@ export function DesktopGrid({
     });
     let freeCursor = 0;
     overflow.forEach((app) => {
-      while (map.has(freeCursor) && freeCursor < totalGridSlots) freeCursor += 1;
+      while ((map.has(freeCursor) || slotToFolder.has(freeCursor)) && freeCursor < totalGridSlots) {
+        freeCursor += 1;
+      }
       if (freeCursor < totalGridSlots) map.set(freeCursor, app);
     });
     return map;
-  }, [iconSlots, totalGridSlots]);
+  }, [groupedAppIds, iconSlots, slotToFolder, totalGridSlots]);
 
   // Arrow-key icon selection & Enter-to-open across the column-major desktop grid
   const keyNavRef = useRef({
@@ -297,8 +329,68 @@ export function DesktopGrid({
         }}
       >
         {Array.from({ length: totalGridSlots }, (_, slotIdx) => {
+          const folder = slotToFolder.get(slotIdx);
           const app = slotToApp.get(slotIdx);
           const isDropHighlight = draggedAppId !== null && dragOverSlot === slotIdx;
+
+          if (folder) {
+            const folderKey = toFolderSlotKey(folder.id);
+            const folderApps = folder.appIds
+              .map((id) => ENTERPRISE_APPS.find((a) => a.id === id))
+              .filter((a): a is EnterpriseOSApp => Boolean(a));
+            return (
+              <DesktopFolderTile
+                key={folderKey}
+                folder={folder}
+                folderApps={folderApps}
+                slotIdx={slotIdx}
+                isRenaming={renamingFolderId === folder.id}
+                isSelected={false}
+                isDragged={draggedAppId === folderKey}
+                isDropHighlight={isDropHighlight && draggedAppId !== folderKey}
+                iconBoxSize={iconBoxSize}
+                barTextColor={barTextColor}
+                effectiveIsLightBg={effectiveIsLightBg}
+                isDark={isDark}
+                primaryColor={primaryColor}
+                iconBgStyle={iconBgStyle}
+                iconBgColor={iconBgColor}
+                iconGradColor1={iconGradColor1}
+                iconGradColor2={iconGradColor2}
+                iconColor={iconColor}
+                onOpenFolder={() => onOpenFolder?.(folder.id)}
+                onCommitRename={(nextName) => onCommitRenameFolder?.(folder.id, nextName)}
+                onContextMenu={() => {}}
+                onDragStart={() => setDraggedAppId(folderKey)}
+                onDragOver={(e) => {
+                  if (!draggedAppId) return;
+                  e.preventDefault();
+                  if (dragOverSlot !== slotIdx) setDragOverSlot(slotIdx);
+                }}
+                onDragLeave={() => {
+                  if (dragOverSlot === slotIdx) setDragOverSlot(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedAppId && !draggedAppId.startsWith('folder:') && onDropAppsIntoFolder) {
+                    const batch = selectedAppIds.includes(draggedAppId) ? selectedAppIds : [draggedAppId];
+                    onDropAppsIntoFolder(folder.id, batch);
+                    setSelectedAppIds([]);
+                    setDraggedAppId(null);
+                    setDragOverSlot(null);
+                    setDropInsertSide(null);
+                    return;
+                  }
+                  handleDropOnSlot(slotIdx);
+                }}
+                onDragEnd={() => {
+                  setDraggedAppId(null);
+                  setDragOverSlot(null);
+                  setDropInsertSide(null);
+                }}
+              />
+            );
+          }
 
           if (!app) {
             return (

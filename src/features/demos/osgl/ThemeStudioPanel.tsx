@@ -8,9 +8,11 @@ import type {
   SeedPaletteId,
   ThemeMode,
   ThemePreferences,
+  WorkspaceShellPreset,
 } from '../../../core/contracts/ThemeContract';
+import { WorkspaceShellGallery } from '../../theme-studio/WorkspaceShellGallery';
 import type { OSWallpaperId } from '../OSGLEngine';
-import type { BgMode, IconBgStyle, QualityMode } from './types';
+import type { BgMode, IconBgStyle, QualityMode, WindowControlsSide } from './types';
 import { BackgroundSettingsSection } from './BackgroundSettingsSection';
 import { IconSettingsSection } from './IconSettingsSection';
 
@@ -35,6 +37,8 @@ export interface ThemeStudioPanelProps {
   setDockVisible: (v: boolean) => void;
   windowAnimation: boolean;
   setWindowAnimation: (v: boolean) => void;
+  windowControlsSide?: WindowControlsSide;
+  setWindowControlsSide?: (side: WindowControlsSide) => void;
   iconBgStyle: IconBgStyle;
   setIconBgStyle: (s: IconBgStyle) => void;
   iconBgColor: string;
@@ -60,6 +64,10 @@ export interface ThemeStudioPanelProps {
   setIconStyle: (s: GoogleIconStyle) => void;
   setIconFilled: (f: boolean) => void;
   setCustomRadiusPx: (px: number) => void;
+  setWorkspaceShell?: (shell: WorkspaceShellPreset) => void;
+  onCreateFolder?: () => void;
+  onOpenDockCustomizer?: () => void;
+  onResetDock?: () => void;
   resetPreferences: () => void;
 }
 
@@ -257,6 +265,19 @@ export function ThemeStudioPanel(props: ThemeStudioPanelProps) {
 
         {activeCategory === 'appearance' && (
           <div className="uxu-stack-md">
+            {props.setWorkspaceShell && (
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>
+                  Çalışma Alanı Kabuğu (6 Tasarım)
+                </div>
+                <WorkspaceShellGallery
+                  value={preferences.workspaceShell}
+                  onChange={props.setWorkspaceShell}
+                  defaultRoleShell="osgl"
+                  compact
+                />
+              </div>
+            )}
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>
                 Görünüm Modu (Dark / Light / System)
@@ -336,6 +357,27 @@ export function ThemeStudioPanel(props: ThemeStudioPanelProps) {
                 <span style={{ fontSize: 12.5, fontWeight: 700 }}>Açılma / Kapanma Efekti</span>
                 <Switch value={windowAnimation} onChange={setWindowAnimation} />
               </div>
+              {props.setWindowControlsSide && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>Pencere Düğmeleri Yönü</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Button
+                      size="xs"
+                      variant={(props.windowControlsSide ?? 'left') === 'left' ? 'filled' : 'outlined'}
+                      onClick={() => props.setWindowControlsSide?.('left')}
+                    >
+                      Sol
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant={props.windowControlsSide === 'right' ? 'filled' : 'outlined'}
+                      onClick={() => props.setWindowControlsSide?.('right')}
+                    >
+                      Sağ
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -345,12 +387,37 @@ export function ThemeStudioPanel(props: ThemeStudioPanelProps) {
               <Slider min={44} max={84} value={iconSizePx} onChange={setIconSizePx} />
             </div>
 
-            <div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
-                Masaüstü Simge Yazı Boyutu Ölçeği ({iconLabelScale}%)
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+                  Masaüstü Simge Yazı Boyutu Ölçeği ({iconLabelScale}%)
+                </div>
+                <Slider min={75} max={140} value={iconLabelScale} onChange={setIconLabelScale} />
               </div>
-              <Slider min={75} max={140} value={iconLabelScale} onChange={setIconLabelScale} />
-            </div>
+
+              {(props.onOpenDockCustomizer || props.onCreateFolder || props.onResetDock) && (
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>
+                    Klasörler &amp; Alt Dock Kişiselleştirme
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {props.onOpenDockCustomizer && (
+                      <Button size="sm" variant="filled" onClick={props.onOpenDockCustomizer}>
+                        Dock Simgelerini Seç / Sırala
+                      </Button>
+                    )}
+                    {props.onCreateFolder && (
+                      <Button size="sm" variant="outlined" onClick={props.onCreateFolder}>
+                        + Yeni Masaüstü Klasörü
+                      </Button>
+                    )}
+                    {props.onResetDock && (
+                      <Button size="sm" variant="outlined" onClick={props.onResetDock}>
+                        Dock Varsayılanına Dön
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
           </div>
         )}
 

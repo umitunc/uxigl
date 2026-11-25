@@ -27,7 +27,7 @@ export interface OSWorkspaceShellProps {
 }
 
 export const OSWorkspaceShell: React.FC<OSWorkspaceShellProps> = ({
-  apps, dockAppIds, widgets = [], storageScopeKey, initialWallpaper = 'dijios-oxford',
+  apps, dockAppIds, widgets = [], storageScopeKey, initialWallpaper = 'oxford-navy',
   brandLogo, brandTitle = 'uxiGL', brandSubtitle, headerRightSlot, topBannerSlot,
   renderWindowContent, onSwitchToClassic, onOpenGlobalThemeStudio, externalOpenRequest,
 }) => {

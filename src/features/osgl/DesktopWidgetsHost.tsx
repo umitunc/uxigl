@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useRef } from 'react';
 import { GripHorizontal } from 'lucide-react';
 import type {
   OSDesktopWidgetDefinition,
@@ -13,7 +13,7 @@ import {
   clampWidgetPosition,
   clampWidgetSize,
   resolveWidgetOverlaps,
-  snapWidgetToGrid,
+  type WidgetNeighborRect,
 } from './widgetLayout';
 
 export function DesktopWidgetsHost({
@@ -33,11 +33,18 @@ export function DesktopWidgetsHost({
   onOpenApp: (id: string) => void;
   onOpenSideBySide: (leftAppId: string, rightAppId: string) => void;
 }) {
+  const latestNeighborRectsRef = useRef<WidgetNeighborRect[]>([]);
+
   const {
-    draggingId, dragPreviewPos, resizingId, resizePreviewSize,
+    draggingId, dragPreviewPos, resizingId, resizePreviewSize, magneticGuides,
     handlePointerDown, handlePointerMove, handlePointerUp,
     handleResizeDown, handleResizeMove, handleResizeUp,
-  } = useWidgetDragResize({ viewportSize, onMoveWidget, onResizeWidget });
+  } = useWidgetDragResize({
+    viewportSize,
+    getNeighbors: (excludeId) => latestNeighborRectsRef.current.filter((r) => r.id !== excludeId),
+    onMoveWidget,
+    onResizeWidget,
+  });
 
   const baseCardStyle: React.CSSProperties = {
     width: '100%', height: '100%', boxSizing: 'border-box', overflow: 'hidden',
@@ -81,8 +88,54 @@ export function DesktopWidgetsHost({
     viewportSize.h
   );
 
+  latestNeighborRectsRef.current = visible.map((v) => {
+    const rPos = resolved[v.def.id] ?? v.pos;
+    return {
+      id: v.def.id,
+      x: rPos.x,
+      y: rPos.y,
+      width: v.size.width,
+      height: v.size.height,
+    };
+  });
+
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }}>
+      {magneticGuides.map((g, idx) => (
+        <div
+          key={`${g.orientation}-${g.pos}-${idx}`}
+          data-osgl-magnetic-guide={g.kind}
+          aria-hidden="true"
+          style={
+            g.orientation === 'vertical'
+              ? {
+                  position: 'absolute',
+                  left: g.pos,
+                  top: g.start,
+                  width: 0,
+                  height: Math.max(16, g.end - g.start),
+                  borderLeft: `1.5px ${g.kind === 'margin' ? 'dashed' : 'solid'} ${primaryColor}`,
+                  boxShadow: `0 0 8px ${primaryColor}`,
+                  opacity: 0.85,
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }
+              : {
+                  position: 'absolute',
+                  left: g.start,
+                  top: g.pos,
+                  width: Math.max(16, g.end - g.start),
+                  height: 0,
+                  borderTop: `1.5px ${g.kind === 'margin' ? 'dashed' : 'solid'} ${primaryColor}`,
+                  boxShadow: `0 0 8px ${primaryColor}`,
+                  opacity: 0.85,
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }
+          }
+        />
+      ))}
+
       {visible.map(({ def, isDragging, isResizing, rawSize }) => {
         const basePos = resolved[def.id];
         const size = clampWidgetSize(rawSize.width, rawSize.height, basePos.x, basePos.y, viewportSize.w, viewportSize.h);
@@ -102,17 +155,14 @@ export function DesktopWidgetsHost({
           openApp: onOpenApp, openSideBySide: onOpenSideBySide,
         };
 
-        const ghostPos = isDragging ? { x: snapWidgetToGrid(basePos.x), y: snapWidgetToGrid(basePos.y) } : basePos;
-        const ghostSize = isResizing ? { width: snapWidgetToGrid(size.width), height: snapWidgetToGrid(size.height) } : size;
-
         return (
           <React.Fragment key={def.id}>
             {(isDragging || isResizing) && (
               <div
                 aria-hidden="true"
                 style={{
-                  position: 'absolute', left: 0, top: 0, width: ghostSize.width, height: ghostSize.height,
-                  transform: `translate3d(${ghostPos.x}px, ${ghostPos.y}px, 0)`,
+                  position: 'absolute', left: 0, top: 0, width: size.width, height: size.height,
+                  transform: `translate3d(${basePos.x}px, ${basePos.y}px, 0)`,
                   borderRadius: 16, border: `2px dashed ${effectiveAccent}`,
                   backgroundColor: isDark ? 'rgba(59,130,246,0.10)' : 'rgba(59,130,246,0.08)', pointerEvents: 'none',
                 }}

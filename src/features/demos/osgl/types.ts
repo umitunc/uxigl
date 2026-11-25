@@ -1,8 +1,14 @@
 import type { OSWallpaperId } from '../OSGLEngine';
+import type { DesktopFolder } from '../../osgl/types';
+import type { WidgetUserPrefs } from './widgets/widgetCustomization';
+
+export type { DesktopFolder };
 
 export type IconBgStyle = 'vivid' | 'gradient' | 'soft' | 'glass' | 'sun' | 'mono';
 export type BgMode = 'aurora' | 'gradient' | 'solid' | 'image';
 export type QualityMode = 'quality' | 'performance';
+export type WindowArrangeMode = 'cascade' | 'grid' | 'side-by-side' | 'quadrants';
+export type WindowControlsSide = 'left' | 'right';
 export type DesktopWidgetId =
   | 'clock'
   | 'kpi'
@@ -96,6 +102,8 @@ export interface FloatingWindowState {
   zIndex: number;
   minimized: boolean;
   maximized: boolean;
+  fullscreen?: boolean;
+  restoreBounds?: WindowBounds;
 }
 
 export const OSGL_STATE_KEY = 'uxu.macosgl.state.v1';
@@ -123,7 +131,9 @@ export interface PersistedOSGLState {
   enabledWidgets?: Record<DesktopWidgetId, boolean>;
   widgetPositions?: Partial<Record<DesktopWidgetId, WidgetPosition>>;
   widgetSizes?: Partial<Record<DesktopWidgetId, WidgetSize>>;
+  widgetUserPrefs?: Partial<Record<DesktopWidgetId, WidgetUserPrefs>>;
   windowAnimation?: boolean;
+  windowControlsSide?: WindowControlsSide;
   iconBgStyle?: IconBgStyle;
   iconBgColor?: string;
   iconGradColor1?: string;
@@ -132,6 +142,7 @@ export interface PersistedOSGLState {
   iconSizePx?: number;
   iconLabelScale?: number;
   iconSlots?: Record<string, number>;
+  folders?: DesktopFolder[];
   windows?: FloatingWindowState[];
   windowBoundsByApp?: Record<string, WindowBounds>;
   topZ?: number;

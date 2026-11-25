@@ -1,7 +1,19 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
-import { Columns2, Grid2x2, Layers, Palette, Pin, PinOff, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  Columns2,
+  FolderPlus,
+  Grid2x2,
+  Layers,
+  Palette,
+  Pin,
+  PinOff,
+  RotateCcw,
+  SlidersHorizontal,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import { OS_WALLPAPERS, type OSWallpaperId } from '../OSGLEngine';
-import { ENTERPRISE_APPS } from './types';
+import { ENTERPRISE_APPS, type WindowArrangeMode } from './types';
 import { ContextMenuItem } from './WindowChrome';
 
 export function ContextMenu({
@@ -12,6 +24,8 @@ export function ContextMenu({
   dockVisible,
   dockAppIds,
   onOpenApp,
+  onCreateFolder,
+  onOpenDockCustomizer,
   onArrange,
   onSelectWallpaper,
   onToggleDock,
@@ -27,7 +41,9 @@ export function ContextMenu({
   dockVisible: boolean;
   dockAppIds: string[];
   onOpenApp: (id: string) => void;
-  onArrange: (mode: 'cascade' | 'grid' | 'side-by-side') => void;
+  onCreateFolder?: (initialAppIds?: string[]) => void;
+  onOpenDockCustomizer?: () => void;
+  onArrange: (mode: WindowArrangeMode) => void;
   onSelectWallpaper: (wp: OSWallpaperId) => void;
   onToggleDock: () => void;
   onTogglePinToDock: (appId: string) => void;
@@ -35,6 +51,17 @@ export function ContextMenu({
   onCloseAll: () => void;
   onCloseMenu: () => void;
 }) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onCloseMenu();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [onCloseMenu]);
   const singleAppId = selectedAppIds.length === 1 ? selectedAppIds[0] : null;
   const singleApp = singleAppId ? ENTERPRISE_APPS.find((a) => a.id === singleAppId) : null;
   const isPinned = singleAppId ? dockAppIds.includes(singleAppId) : false;
@@ -96,6 +123,20 @@ export function ContextMenu({
         zIndex: 2200,
       }}
     >
+      {onCreateFolder && (
+        <ContextMenuItem
+          icon={<FolderPlus size={14} />}
+          label={
+            selectedAppIds.length > 0
+              ? `Seçilenlerle Klasör Oluştur (${selectedAppIds.length})`
+              : 'Yeni Klasör Oluştur'
+          }
+          onClick={() => {
+            onCreateFolder(selectedAppIds.length > 0 ? selectedAppIds : undefined);
+            onCloseMenu();
+          }}
+        />
+      )}
       {singleApp && singleAppId && (
         <ContextMenuItem
           icon={isPinned ? <PinOff size={14} /> : <Pin size={14} />}
@@ -116,8 +157,20 @@ export function ContextMenu({
           }}
         />
       )}
+      {onOpenDockCustomizer && (
+        <ContextMenuItem
+          icon={<SlidersHorizontal size={14} />}
+          label="Alt Dock Simgelerini Özelleştir..."
+          onClick={() => {
+            onOpenDockCustomizer();
+            onCloseMenu();
+          }}
+        />
+      )}
+      <div style={{ height: 1, backgroundColor: 'rgba(148,163,184,0.2)', margin: '4px 0' }} />
       <ContextMenuItem icon={<Sparkles size={14} />} label="Yeni Pencere (Dashboard)" onClick={() => { onOpenApp('overview'); onCloseMenu(); }} />
       <ContextMenuItem icon={<Grid2x2 size={14} />} label="Pencereleri Izgara Diz" onClick={() => { onArrange('grid'); onCloseMenu(); }} />
+      <ContextMenuItem icon={<Grid2x2 size={14} />} label="4 Köşe Kadran (2×2)" onClick={() => { onArrange('quadrants'); onCloseMenu(); }} />
       <ContextMenuItem icon={<Layers size={14} />} label="Kademeli Diz (Cascade)" onClick={() => { onArrange('cascade'); onCloseMenu(); }} />
       <ContextMenuItem icon={<Columns2 size={14} />} label="Yan Yana Diz" onClick={() => { onArrange('side-by-side'); onCloseMenu(); }} />
       <div style={{ height: 1, backgroundColor: 'rgba(148,163,184,0.2)', margin: '4px 0' }} />

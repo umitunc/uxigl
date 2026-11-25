@@ -13,12 +13,13 @@ import type { ComponentSize } from '../../../core/contracts/ComponentContracts';
 import type { InputValidationState } from '../Input/Input';
 import {
   foldTrSearch,
+  matchesTrSearch,
   useSelectPortalPosition,
   type SelectOptionItem,
   type SelectProps,
 } from './selectHelpers';
 
-export type { SelectOptionItem, SelectProps };
+export { foldTrSearch, matchesTrSearch, type SelectOptionItem, type SelectProps };
 
 export const Select: React.FC<SelectProps> = ({
   id,
@@ -70,19 +71,13 @@ export const Select: React.FC<SelectProps> = ({
   const filteredOptions = useMemo(() => {
     const raw = query.trim();
     if (!raw) return options;
-    const qTr = raw.toLocaleLowerCase('tr-TR');
-    const qEn = raw.toLowerCase();
-    const qFolded = foldTrSearch(raw);
-    return options.filter((opt) => {
-      const match = (str?: string) =>
-        Boolean(
-          str &&
-            (str.toLowerCase().includes(qEn) ||
-              str.toLocaleLowerCase('tr-TR').includes(qTr) ||
-              foldTrSearch(str).includes(qFolded))
-        );
-      return match(opt.label) || match(opt.description) || match(opt.group) || match(opt.value);
-    });
+    return options.filter(
+      (opt) =>
+        matchesTrSearch(opt.label, raw) ||
+        matchesTrSearch(opt.description, raw) ||
+        matchesTrSearch(opt.group, raw) ||
+        matchesTrSearch(opt.value, raw)
+    );
   }, [options, query]);
 
   const resolvedValidation: InputValidationState = errorText ? 'error' : validationState;

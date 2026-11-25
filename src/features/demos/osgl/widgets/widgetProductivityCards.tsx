@@ -4,10 +4,23 @@ import type { WidgetThemeStyle } from './widgetCards';
 
 const NOTES_STORAGE_KEY = 'uxigl_osgl_widget_notes';
 
-export function FocusTimerWidgetCard({ theme }: { theme: WidgetThemeStyle }) {
-  const [totalSec, setTotalSec] = useState(25 * 60);
-  const [timerSec, setTimerSec] = useState(25 * 60);
+export function FocusTimerWidgetCard({
+  theme,
+  defaultMinutes = 25,
+}: {
+  theme: WidgetThemeStyle;
+  defaultMinutes?: number;
+}) {
+  const normalizedDefault = Math.max(1, Math.min(180, Math.round(defaultMinutes || 25)));
+  const [totalSec, setTotalSec] = useState(normalizedDefault * 60);
+  const [timerSec, setTimerSec] = useState(normalizedDefault * 60);
   const [timerRunning, setTimerRunning] = useState(false);
+
+  useEffect(() => {
+    setTimerRunning(false);
+    setTotalSec(normalizedDefault * 60);
+    setTimerSec(normalizedDefault * 60);
+  }, [normalizedDefault]);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -53,7 +66,10 @@ export function FocusTimerWidgetCard({ theme }: { theme: WidgetThemeStyle }) {
             border: `1px solid ${subtleBorder}`,
           }}
         >
-          {[5, 15, 25].map((m) => {
+          {Array.from(new Set([5, 15, 25, normalizedDefault]))
+            .sort((a, b) => a - b)
+            .slice(0, 4)
+            .map((m) => {
             const isActive = totalSec === m * 60;
             return (
               <button
