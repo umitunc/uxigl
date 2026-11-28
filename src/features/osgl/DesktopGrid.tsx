@@ -1,11 +1,12 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { DesktopFolderTile } from './DesktopFolderTile';
 import { DesktopIconTile } from './DesktopIconTile';
-import { fromFolderSlotKey } from './desktopFoldersAndDock';
 import {
   buildDesktopGridOccupants,
   computePreviewDropSlots,
   reorderDesktopGridOnDrop,
+  resolveMovingSelectionKeys,
+  shouldDropAppsIntoFolder,
 } from './desktopGridUtils';
 import type { DesktopFolder, FloatingWindowState, IconBgStyle, OSWorkspaceApp } from './types';
 
@@ -87,11 +88,13 @@ export function DesktopGrid({
   const handleDropOnSlot = (targetSlot: number) => {
     if (!draggedSlotKey) { setDragOverSlot(null); return; }
     const targetOcc = slotToOccupant.get(targetSlot);
-    const draggedFolderId = fromFolderSlotKey(draggedSlotKey);
 
-    if (!draggedFolderId && targetOcc?.kind === 'folder' && onDropAppsIntoFolder) {
-      const movingApps = selectedAppIds.length > 1 && selectedAppIds.includes(draggedSlotKey)
-        ? selectedAppIds : [draggedSlotKey];
+    if (
+      onDropAppsIntoFolder &&
+      targetOcc?.kind === 'folder' &&
+      shouldDropAppsIntoFolder({ draggedSlotKey, selectedAppIds, targetOccupant: targetOcc })
+    ) {
+      const movingApps = resolveMovingSelectionKeys(draggedSlotKey, selectedAppIds);
       onDropAppsIntoFolder(targetOcc.folder.id, movingApps);
       setSelectedAppIds([]);
       setDraggedSlotKey(null);
@@ -111,6 +114,11 @@ export function DesktopGrid({
     if ((e.target as HTMLElement).closest(
       'button, input, [data-osgl-folder-id], [data-macos-window="true"], [data-macos-dock="true"], [data-macos-context="true"], [data-desktop-widget]'
     )) return;
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      // Ignore synthetic events without active pointer id
+    }
     setSelectedAppIds([]);
     lastHitsRef.current = [];
     cachedIconRectsRef.current = Object.entries(desktopIconRefs.current)
@@ -150,6 +158,7 @@ export function DesktopGrid({
 
   return (
     <div
+      data-testid="osgl-desktop-grid"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

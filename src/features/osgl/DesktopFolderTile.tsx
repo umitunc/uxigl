@@ -103,6 +103,7 @@ export function DesktopFolderTile({
       ref={tileRef}
       key={`folder-${folder.id}-${slotIdx}`}
       data-osgl-folder-id={folder.id}
+      data-osgl-selected={isSelected ? 'true' : 'false'}
       draggable={!isRenaming}
       onDragStart={onDragStart}
       onDragOver={onDragOver}

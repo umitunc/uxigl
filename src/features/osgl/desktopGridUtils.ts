@@ -122,6 +122,28 @@ function resolveMovingKeysAndDelta(params: {
   return { movingKeys, destByKey };
 }
 
+export function resolveMovingSelectionKeys(
+  draggedSlotKey: string | null,
+  selectedAppIds: string[]
+): string[] {
+  if (!draggedSlotKey) return [];
+  return selectedAppIds.length > 1 && selectedAppIds.includes(draggedSlotKey)
+    ? selectedAppIds
+    : [draggedSlotKey];
+}
+
+export function shouldDropAppsIntoFolder(params: {
+  draggedSlotKey: string | null;
+  selectedAppIds: string[];
+  targetOccupant: GridCellOccupant | undefined;
+}): boolean {
+  const { draggedSlotKey, selectedAppIds, targetOccupant } = params;
+  if (!draggedSlotKey || targetOccupant?.kind !== 'folder') return false;
+  const moving = resolveMovingSelectionKeys(draggedSlotKey, selectedAppIds);
+  if (moving.length === 0 || moving.includes(targetOccupant.slotKey)) return false;
+  return moving.every((key) => !fromFolderSlotKey(key));
+}
+
 export function computePreviewDropSlots(params: {
   occupantMap: Map<number, GridCellOccupant>;
   draggedSlotKey: string | null;
@@ -134,7 +156,13 @@ export function computePreviewDropSlots(params: {
   if (!params.draggedSlotKey || params.targetSlot === null) return result;
 
   const targetOcc = params.occupantMap.get(params.targetSlot);
-  if (!fromFolderSlotKey(params.draggedSlotKey) && targetOcc?.kind === 'folder') {
+  if (
+    shouldDropAppsIntoFolder({
+      draggedSlotKey: params.draggedSlotKey,
+      selectedAppIds: params.selectedAppIds,
+      targetOccupant: targetOcc,
+    })
+  ) {
     result.add(params.targetSlot);
     return result;
   }
