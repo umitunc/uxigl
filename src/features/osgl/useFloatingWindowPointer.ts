@@ -1,25 +1,38 @@
-﻿import React, { useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import type { FloatingWindowState, WindowBounds } from './types';
 import {
   clampWindowDragPosition,
   computeResizedWindowBounds,
   computeUnmaximizeDragOrigin,
+  computeWindowMagneticSnap,
+  computeWindowResizeMagneticSnap,
   detectEdgeSnapZone,
+  type MagneticGuideLine,
   type ResizeDirection,
   type SnapZone,
 } from './windowGeometry';
 
 export function useFloatingWindowPointer({
+  windows = [],
+  dockVisible = true,
   setWindows,
   onFocus,
   onSnapWindow,
 }: {
+  windows?: FloatingWindowState[];
+  dockVisible?: boolean;
   setWindows: React.Dispatch<React.SetStateAction<FloatingWindowState[]>>;
   onFocus: (id: string) => void;
   onSnapWindow: (id: string, zone: Exclude<SnapZone, null>) => void;
 }) {
   const windowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [snapPreview, setSnapPreview] = useState<SnapZone>(null);
+  const [magneticGuides, setMagneticGuides] = useState<MagneticGuideLine[]>([]);
+
+  const getSiblingBounds = (excludeWinId: string): WindowBounds[] =>
+    windows
+      .filter((w) => w.id !== excludeWinId && !w.minimized && !w.maximized && !w.fullscreen)
+      .map((w) => ({ x: w.x, y: w.y, width: w.width, height: w.height }));
 
   const dragRef = useRef<{
     winId: string;
@@ -79,7 +92,12 @@ export function useFloatingWindowPointer({
       snapZone: null,
       rafId: null,
     };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setMagneticGuides([]);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore synthetic events without active pointer id
+    }
   };
 
   const handlePointerMoveTitle = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -129,14 +147,31 @@ export function useFloatingWindowPointer({
     }
 
     drag.moved = true;
-    const clamped = clampWindowDragPosition(drag.origX + dx, drag.origY + dy, drag.winW, vw, vh);
-    drag.curX = clamped.x;
-    drag.curY = clamped.y;
-
-    const nextZone = detectEdgeSnapZone(e.clientX, e.clientY, vw, vh);
+    const nextZone = detectEdgeSnapZone(e.clientX, e.clientY, vw, vh, drag.snapZone);
     if (nextZone !== drag.snapZone) {
       drag.snapZone = nextZone;
       setSnapPreview(nextZone);
+    }
+
+    if (nextZone) {
+      setMagneticGuides([]);
+      const clamped = clampWindowDragPosition(drag.origX + dx, drag.origY + dy, drag.winW, vw, vh);
+      drag.curX = clamped.x;
+      drag.curY = clamped.y;
+    } else {
+      const magnetic = computeWindowMagneticSnap({
+        rawX: drag.origX + dx,
+        rawY: drag.origY + dy,
+        winW: drag.winW,
+        winH: drag.winH,
+        siblings: getSiblingBounds(drag.winId),
+        vw,
+        vh,
+        dockVisible,
+      });
+      drag.curX = magnetic.x;
+      drag.curY = magnetic.y;
+      setMagneticGuides(magnetic.guides);
     }
 
     if (drag.rafId === null) {
@@ -158,6 +193,7 @@ export function useFloatingWindowPointer({
     const { winId, curX, curY, moved, snapZone } = drag;
     dragRef.current = null;
     setSnapPreview(null);
+    setMagneticGuides([]);
     if (!moved) return;
     if (snapZone) {
       onSnapWindow(winId, snapZone);
@@ -186,7 +222,12 @@ export function useFloatingWindowPointer({
       cur: { ...orig },
       rafId: null,
     };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setMagneticGuides([]);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore synthetic events without active pointer id
+    }
   };
 
   const handlePointerMoveResize = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -194,7 +235,7 @@ export function useFloatingWindowPointer({
     if (!res) return;
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1366;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 860;
-    res.cur = computeResizedWindowBounds(
+    const rawBounds = computeResizedWindowBounds(
       res.orig,
       res.dir,
       e.clientX - res.startX,
@@ -202,6 +243,15 @@ export function useFloatingWindowPointer({
       vw,
       vh
     );
+    const magnetic = computeWindowResizeMagneticSnap({
+      rawBounds,
+      dir: res.dir,
+      siblings: getSiblingBounds(res.winId),
+      vw,
+      vh,
+    });
+    res.cur = magnetic.bounds;
+    setMagneticGuides(magnetic.guides);
     if (res.rafId === null) {
       res.rafId = requestAnimationFrame(() => {
         const el = windowRefs.current[res.winId];
@@ -224,6 +274,7 @@ export function useFloatingWindowPointer({
     if (res.rafId !== null) cancelAnimationFrame(res.rafId);
     const { winId, cur } = res;
     resizeRef.current = null;
+    setMagneticGuides([]);
     setWindows((prev) =>
       prev.map((w) => (w.id === winId ? { ...w, ...cur, restoreBounds: undefined } : w))
     );
@@ -232,9 +283,33 @@ export function useFloatingWindowPointer({
     }
   };
 
+  const finishDragRef = useRef(finishDragTitle);
+  finishDragRef.current = finishDragTitle;
+  const finishResizeRef = useRef(finishResize);
+  finishResizeRef.current = finishResize;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleGlobalRelease = () => {
+      if (dragRef.current) finishDragRef.current();
+      if (resizeRef.current) finishResizeRef.current();
+    };
+    window.addEventListener('pointerup', handleGlobalRelease);
+    window.addEventListener('mouseup', handleGlobalRelease);
+    window.addEventListener('pointercancel', handleGlobalRelease);
+    window.addEventListener('blur', handleGlobalRelease);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalRelease);
+      window.removeEventListener('mouseup', handleGlobalRelease);
+      window.removeEventListener('pointercancel', handleGlobalRelease);
+      window.removeEventListener('blur', handleGlobalRelease);
+    };
+  }, []);
+
   return {
     windowRefs,
     snapPreview,
+    magneticGuides,
     handlePointerDownTitle,
     handlePointerMoveTitle,
     finishDragTitle,

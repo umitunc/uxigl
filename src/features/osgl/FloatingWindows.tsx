@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { Badge } from '../../components/primitives';
 import { GoogleIcon } from '../../components/primitives';
 import { TrafficLights } from './WindowChrome';
@@ -35,7 +35,18 @@ export function FloatingWindows({
   renderWindowContent: (appId: string) => React.ReactNode;
   renderThemeStudio: () => React.ReactNode;
 }) {
-  const ptr = useFloatingWindowPointer({ setWindows, onFocus, onSnapWindow });
+  const ptr = useFloatingWindowPointer({ windows, dockVisible, setWindows, onFocus, onSnapWindow });
+
+  useLayoutEffect(() => {
+    for (const win of windows) {
+      const el = ptr.windowRefs.current[win.id];
+      if (!el || win.minimized || win.maximized || win.fullscreen) continue;
+      el.style.left = `${win.x}px`;
+      el.style.top = `${win.y}px`;
+      el.style.width = `${win.width}px`;
+      el.style.height = `${win.height}px`;
+    }
+  }, [windows, ptr.windowRefs]);
 
   const visibleWindows = windows.filter((w) => !w.minimized);
   const topmostWinId =
@@ -49,6 +60,41 @@ export function FloatingWindows({
 
   return (
     <>
+      {ptr.magneticGuides.map((g, idx) => (
+        <div
+          key={`${g.orientation}-${g.pos}-${idx}`}
+          data-osgl-window-guide={g.kind}
+          aria-hidden="true"
+          style={
+            g.orientation === 'vertical'
+              ? {
+                  position: 'absolute',
+                  left: g.pos,
+                  top: g.start,
+                  width: 0,
+                  height: Math.max(24, g.end - g.start),
+                  borderLeft: `1.5px ${g.kind === 'margin' ? 'dashed' : 'solid'} ${paletteTokens.primary}`,
+                  boxShadow: `0 0 8px ${paletteTokens.primary}`,
+                  opacity: 0.9,
+                  pointerEvents: 'none',
+                  zIndex: 1945,
+                }
+              : {
+                  position: 'absolute',
+                  left: g.start,
+                  top: g.pos,
+                  width: Math.max(24, g.end - g.start),
+                  height: 0,
+                  borderTop: `1.5px ${g.kind === 'margin' ? 'dashed' : 'solid'} ${paletteTokens.primary}`,
+                  boxShadow: `0 0 8px ${paletteTokens.primary}`,
+                  opacity: 0.9,
+                  pointerEvents: 'none',
+                  zIndex: 1945,
+                }
+          }
+        />
+      ))}
+
       {snapRect && (
         <div
           data-osgl-snap-preview={ptr.snapPreview ?? undefined}
